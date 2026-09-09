@@ -4,6 +4,7 @@ import unittest
 
 import numpy as np
 
+from cqts.safety import CertificateNumericsError
 from experiments import conformal_completion as cc
 from experiments import numerical_icp as ni
 
@@ -13,6 +14,15 @@ class TestConformalCompletion(unittest.TestCase):
         q, rank = cc.split_conformal_quantile([1, 2, 3, 4, 5, 6, 7, 8, 9], alpha=0.2)
         self.assertEqual(rank, 8)
         self.assertEqual(q, 8.0)
+
+    def test_small_n_augments_with_infinity(self):
+        q, rank = cc.split_conformal_quantile([1.0, 2.0], alpha=0.1)
+        self.assertEqual(rank, 3)
+        self.assertEqual(q, math.inf)
+
+    def test_nonfinite_score_is_rejected(self):
+        with self.assertRaises(CertificateNumericsError):
+            cc.split_conformal_quantile([1.0, math.nan], alpha=0.1)
 
     def test_gate_signature_has_no_episode_or_ground_truth(self):
         params = tuple(inspect.signature(cc.first_completion_stage).parameters)
@@ -43,6 +53,20 @@ class TestConformalCompletion(unittest.TestCase):
         a = cc.completion_bounds(s, 1.0)
         b = cc.completion_bounds(s, 2.0)
         self.assertTrue(np.all(b >= a))
+
+    def test_invalid_q_fails_closed(self):
+        rng = np.random.default_rng(8)
+        ep = ni.generate_episode(rng, max_iter=2, points=24)
+        b = cc.completion_bounds(ep.stages[0], math.nan)
+        self.assertTrue(np.all(np.isinf(b)))
+        self.assertFalse(cc.robust_task_pass("top_suction", b))
+
+    def test_infinite_q_produces_hold(self):
+        rng = np.random.default_rng(9)
+        ep = ni.generate_episode(rng, max_iter=2, points=24)
+        k, act, _ = cc.first_completion_stage(ep.stages, "top_suction", math.inf)
+        self.assertIsNone(k)
+        self.assertFalse(act)
 
 
 if __name__ == "__main__":
