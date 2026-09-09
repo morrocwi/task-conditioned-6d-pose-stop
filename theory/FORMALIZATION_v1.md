@@ -529,6 +529,89 @@ a genuinely large-dynamic-range observable tied to absolute error scale, or a di
 that reasons about the coarse initial estimate's own error distribution directly rather than
 perturbing around the current refined estimate.
 
+### C20d — conformal-scaled Keystone-energy decay accumulator (implemented, PROP-NATIVE-04, refuted)
+
+Placement note: same status as C20b/C20c — executed code, real result on real data
+(`lab/native_conformal_energy.py`, `lab/run_native_conformal_energy.py`,
+`lab/results/real-bop-lmo-2026-09-09-run7/`). Seventh real-data cycle, following a 2026-09-09
+ultracode team meeting convened after C20c/run6 was refuted, reading this registry through the
+Toledo lens and the readout_universe+readout_genesis lens (founder instruction, verbatim: "ultracode
+ประชุมทีมด้วยความรู้เดิมที่มีและอ่านงานด้วยเลนส์ toledo ของเราและ readout universe+genesis แล้วหาคำตอบให้เจอ
+ขยายการทดลองเพิ่มตามข้อค้นพบและสมมุติฐานใหม่"). Toledo proposal `PROP-NATIVE-04`. C20b's/C20c's own code
+paths and results are untouched and remain independently reproducible.
+
+**Motivation:** the common thread the team meeting diagnosed across C20b/C20c is that both
+constructions read only LOCAL curvature/persistence information (`H_k`'s own eigenstructure, or a
+streak of local checks) and never anything tied to the actual, calibrated SCALE of the residual/
+error at the current stage. PROP-NATIVE-04 composes three targeted fixes, one per diagnosed defect:
+(1) replace C20b's fixed TRAIN-population perturbation-magnitude CAP with `q_k`, PROP-CONF-03's
+already-calibrated per-checkpoint Bonferroni conformal quantile (C16-C18); (2) replace C20c's
+non-toggling boolean per-stage signal with `Gamma_k`, the Keystone quadratic-form energy (Toledo
+root `Keystone`, `Phi^T L_R Phi = I(Phi)` specialized `L_R -> H_k`, `Phi -> eps_k`) — a real scalar,
+not a flag; (3) replace C20c's hard reset-to-zero streak with a decayed real-valued accumulator
+(root `A2`-FOLD generalized to a real-valued, decayed carrier).
+
+**Decision rule (PROP-NATIVE-04), as implemented (two disclosed interpretation choices — see
+`lab/native_conformal_energy.py`'s module docstring for the full account):**
+
+```
+eps_{k,j} = min(q_k / lambda_j, CEILING)              [CEILING = weld/M.40.v1, reused = C20b's CAP]
+Gamma_k   = lambda_j * eps_{k,j}^2                     [Keystone energy, single least-constrained j]
+m_k       = rho * m_{k-1} + iota_k * Gamma_k,  m_0 := 0,  rho predeclared in (0,1)
+ACT at first predeclared checkpoint k_m  s.t.  m_{k_m} >= theta  AND  gate_b(k_m)
+```
+
+Interpretation choice 1: `q_k` (and therefore `eps_{k,j}`, `Gamma_k`) is only well-defined at the
+K'=4 predeclared Bonferroni checkpoints (`{4,8,12,15}`, reused from C16-C18/run3), so `m_k`
+accumulates once per checkpoint, not once per ICP iteration — the registered index `k` is read as
+ranging over the checkpoint sequence.
+
+Interpretation choice 2: the registered condition `q_{k_m} <= tau_i` is a literal scalar comparison
+of a dimensionless log-nonconformity quantile against a physical task tolerance — a units mismatch,
+not a sensible inequality as typeset. `gate_b(k_m)` is read instead as PROP-CONF-03's own
+already-implemented, physically well-typed certificate condition at that checkpoint (the calibrated
+completion-error bound built from `q_{k_m}` already lies inside the task-admissible region —
+exactly what C16-C18's own `first_certificate_checkpoint` already evaluates).
+
+`rho = 0.5` (predeclared before any data was read, disclosed as the simplest non-extreme decay
+rate). `theta` (per task, identical on TRAIN across all three: `0.0007464025551635286`) is the
+median, over the 40 TRAIN episodes, of `m_k` at the final checkpoint (`k=15`).
+
+**Honest TRAIN+CALIBRATION-only diagnostic, disclosed before FINAL TEST was opened:** two
+structural findings, neither requiring `test.jsonl`: (1) `eps_{k,j}` saturates at `CEILING` on
+100% of the 160 TRAIN stage-checkpoint pairs, for all three tasks — `q_k` (order ~2.1-2.2) divided
+by `lambda_j` (typically < 1) is essentially always larger than the reused `CEILING` (0.0327), so
+the conformal-quantile numerator never actually influences the magnitude; `eps_{k,j}` collapses to
+being numerically identical to C20b/C20c's own CAP. (2) `gate_b` is TRUE on 0/40 TRAIN episodes at
+all 4 checkpoints, for all 3 tasks — reproducing C16-C18/run3's already-known
+`certificate_rate=0.0` finding. This predicted, before `test.jsonl` was opened, that run7 would
+fail closed to near-100% HOLD — the OPPOSITE failure mode from C20b/C20c's unsafe-early-ACT.
+
+**Result (`lab/results/real-bop-lmo-2026-09-09-run7/RESULT.md`): the prediction is confirmed
+exactly.** ACT rate 0% (100% HOLD) on all 40 test episodes, for all three tasks — unsafe-ACT rate
+0% (achieved by never acting, not by acting correctly), failing non-inferiority in the
+over-conservative direction (LCB -23.7% to -49.1%, vs. the estimator's own 10-32.5% completion
+rate). Checkpoint-level gate diagnostics confirm the predicted mechanism exactly: `m_k >= theta`
+alone held on 72/160 checkpoint readings (45%) for every task — the Keystone/decay half of the
+construction is not vacuous by itself — but `gate_b` held on 0/160 readings for every task, making
+it the sole binding constraint on ACT throughout.
+
+**What this does and does not establish:** does NOT establish that PROP-NATIVE-04 is a viable fix
+for C20b/C20c's diagnosed problems — it is refuted, in the disclosed implementation tested here. It
+does NOT establish that a calibrated conformal quantile can never be combined productively with a
+native/local check — only that THIS specific composition, on THIS backend/dataset, inherits both of
+its ingredient constructions' own already-diagnosed weaknesses rather than canceling them: the
+reused ceiling still caps the magnitude below the conformal quantile's actual (larger) scale, and
+the checkpoint certificate gate inherits C16-C18's own already-known-vacuous calibration. DOES
+establish, on a THIRD independently-designed construction, that the whole-checkpoint conformal
+envelope (C16-C18/PROP-CONF-03) is vacuous on this backend/dataset not just when used as its own
+standalone certificate (C16-C18/run3's original finding) but also when reused as a conjunctive gate
+inside a materially different decision mechanism — a within-project stability finding about that
+specific calibration construction, not an artifact of one run's tuning. A future construction along
+this line needs either a genuinely raised ceiling (not reused unchanged from C20b) so the conformal
+quantile's larger magnitude can take effect, or a materially different absolute-scale gate than
+C16-C18's own per-checkpoint envelope.
+
 Same shared continuum-representation caveat as C20b (`SE(3)` manifold, `theory/CONTINUUM_
 AUDIT_20260909.md` item 1) — not fixed here either.
 
