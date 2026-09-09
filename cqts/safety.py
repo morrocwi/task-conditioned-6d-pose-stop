@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from statistics import NormalDist
-from typing import Iterable, Sequence
+from typing import Iterable, Mapping, Sequence
 
 import numpy as np
 
@@ -34,6 +34,99 @@ def safe_split_conformal_quantile(scores: Iterable[float], alpha: float):
     if rank == n + 1:
         return math.inf, rank
     return float(x[rank - 1]), rank
+
+
+def bonferroni_feasible_max_checkpoints(n: int, alpha: float) -> int:
+    """Largest K' for which every checkpoint stays feasible at level alpha/K'.
+
+    A predeclared checkpoint calibrated via `safe_split_conformal_quantile` at
+    level alpha/K' is feasible (does not fail-close to +infinity) exactly when
+    `ceil((n+1)(1-alpha/K')) <= n`. As K' grows, alpha/K' shrinks, so the
+    required rank `ceil((n+1)(1-alpha/K'))` is non-decreasing in K' -- once a
+    K' becomes infeasible, every larger K' is infeasible too. This walks K'
+    upward and returns the last feasible value (0 if even K'=1 is infeasible
+    for this n and alpha, which would only happen for very small n).
+
+    This is PROP-CONF-03's feasibility constraint
+    (~/ANSE.ASIA/toledo/registry/proposals/conformal_stopping_family.json),
+    verified for n=40, alpha=0.1 to give exactly K'<=4 feasible, K'=5
+    infeasible -- see GLS-2026-005's diagnosis revision in glosa.
+    """
+    n = int(n)
+    if n < 1:
+        raise CertificateNumericsError("n must be >= 1")
+    alpha = float(alpha)
+    if not (0.0 < alpha < 1.0) or not math.isfinite(alpha):
+        raise CertificateNumericsError("alpha must be finite and in (0,1)")
+    best = 0
+    k = 1
+    while k <= n + 1:
+        per_checkpoint_alpha = alpha / k
+        rank = int(math.ceil((n + 1) * (1.0 - per_checkpoint_alpha)))
+        if rank <= n:
+            best = k
+            k += 1
+        else:
+            break
+    return best
+
+
+def bonferroni_checkpoint_alpha(alpha: float, num_checkpoints: int) -> float:
+    """Per-checkpoint alpha level for a Bonferroni/union-bound multi-checkpoint
+    conformal band (PROP-CONF-03): splits the overall level alpha evenly across
+    `num_checkpoints` predeclared checkpoints so the union bound (Boole's
+    inequality) keeps the combined miscoverage probability across all
+    checkpoints <= alpha. Machine-checked, axiom-free:
+    ~/ANSE.ASIA/toledo/coq/canonical/PROP_CONF_03_union_bound.v
+    (`finite_union_bound`, `bonferroni_checkpoints`).
+    """
+    if not (0.0 < float(alpha) < 1.0) or not math.isfinite(float(alpha)):
+        raise CertificateNumericsError("alpha must be finite and in (0,1)")
+    if int(num_checkpoints) < 1:
+        raise CertificateNumericsError("num_checkpoints must be >= 1")
+    return float(alpha) / int(num_checkpoints)
+
+
+def safe_multi_checkpoint_quantiles(
+    scores_by_checkpoint: Mapping[int, Iterable[float]],
+    alpha: float,
+):
+    """Bonferroni-corrected multi-checkpoint conformal quantiles (PROP-CONF-03).
+
+    Given calibration nonconformity scores computed INDEPENDENTLY at each of
+    K' predeclared checkpoint stages (each score a max over the 6 pose
+    coordinates ONLY -- never over stages, unlike the whole-trajectory
+    PROP-CONF-02 construction used by `safe_split_conformal_quantile` calls in
+    runs 1-2), this calibrates every checkpoint at level alpha/K' by calling
+    the SAME `safe_split_conformal_quantile` function used by the existing
+    whole-trajectory path -- the conformal order-statistic logic itself is
+    never reimplemented, only invoked once per checkpoint with a smaller
+    alpha. Do not use this to replace `safe_split_conformal_quantile` calls
+    made for the existing whole-trajectory construction; both code paths must
+    remain available so runs 1-2 stay reproducible.
+
+    By the union bound (Boole's inequality; machine-checked axiom-free,
+    `~/ANSE.ASIA/toledo/coq/canonical/PROP_CONF_03_union_bound.v`, theorems
+    `finite_union_bound` / `bonferroni_checkpoints`), the resulting per-
+    checkpoint envelopes combine to an overall >= 1-alpha whole-trajectory
+    coverage guarantee without the joint stage-aggregation of PROP-CONF-02.
+
+    Returns {checkpoint_k: (q, rank)}, one entry per checkpoint, in the same
+    (q, rank) shape `safe_split_conformal_quantile` itself returns. Fails
+    closed exactly the same way the underlying function does: whenever a
+    checkpoint's Bonferroni-corrected rank exceeds n (K' predeclared too
+    large for n calibration episodes -- see
+    `bonferroni_feasible_max_checkpoints`), that checkpoint's q is
+    +infinity, never silently something else.
+    """
+    checkpoints = list(scores_by_checkpoint.keys())
+    if not checkpoints:
+        raise CertificateNumericsError("scores_by_checkpoint must be non-empty")
+    per_checkpoint_alpha = bonferroni_checkpoint_alpha(alpha, len(checkpoints))
+    out = {}
+    for k in checkpoints:
+        out[k] = safe_split_conformal_quantile(scores_by_checkpoint[k], per_checkpoint_alpha)
+    return out
 
 
 def safe_exp_error_bound(predicted_log_error: float, q: float, floor: float) -> float:

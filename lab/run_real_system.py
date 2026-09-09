@@ -323,15 +323,7 @@ def evaluate(test, tasks, model, q, inference, repeats, timing_mode):
     return result
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--config", required=True)
-    ap.add_argument("--train", required=True)
-    ap.add_argument("--calibration", required=True)
-    ap.add_argument("--test", required=True)
-    ap.add_argument("--out", default="lab_results.json")
-    args = ap.parse_args()
-
+def _load_and_validate_splits(args):
     cfg = json.loads(Path(args.config).read_text(encoding="utf-8"))
     train, cal, test = load_jsonl(args.train), load_jsonl(args.calibration), load_jsonl(args.test)
     ensure_disjoint(("train", train), ("calibration", cal), ("test", test))
@@ -340,7 +332,10 @@ def main():
     d3, _ = validate_dataset(test)
     if len({d1, d2, d3}) != 1:
         raise ValueError("feature dimension differs across splits")
+    return cfg, train, cal, test, d1
 
+
+def _common_config(cfg):
     alpha = float(cfg.get("alpha", 0.1))
     floors = cfg.get("error_floor", [1e-5, 1e-5, 1e-5, 1e-4, 1e-4, 1e-4])
     inference_cfg = cfg.get("inference", {})
@@ -355,9 +350,15 @@ def main():
     timing_mode = str(cfg.get("timing_mode", "trajectory_prefix_estimate"))
     if timing_mode not in {"trajectory_prefix_estimate", "online_policy_measured"}:
         raise ValueError("timing_mode must be trajectory_prefix_estimate or online_policy_measured")
-
     for spec in cfg["tasks"].values():
         validate_task_spec(spec)
+    return alpha, floors, inference, timing_mode
+
+
+def run_whole_trajectory(args):
+    cfg, train, cal, test, d1 = _load_and_validate_splits(args)
+    alpha, floors, inference, timing_mode = _common_config(cfg)
+
     model = fit_model(train, floors)
     scores = [nonconformity(ep, model) for ep in cal]
     q, rank = conformal_quantile(scores, alpha)
@@ -368,6 +369,7 @@ def main():
         "claim": "coverage-qualified downstream task stopping of iterative 6D pose refinement",
         "units": {"translation": "metres", "rotation": "radians", "time": "milliseconds"},
         "protocol": {
+            "mode": "whole_trajectory",
             "train_episodes": len(train),
             "calibration_episodes": len(cal),
             "test_episodes": len(test),
@@ -388,6 +390,85 @@ def main():
             "result_scope": "instrumented iterative 6D pose backend; task readers are declared pose-error admissibility tests",
         },
     }
+    return payload
+
+
+def run_bonferroni_multicheckpoint(args):
+    # Imported here (not at module top) to avoid a hard import-time dependency
+    # from the existing whole-trajectory path onto the new module, and to
+    # avoid a circular import (lab.multicheckpoint imports several functions
+    # back from this module).
+    from lab.multicheckpoint import (
+        calibrate_checkpoints,
+        evaluate_multicheckpoint,
+        validate_checkpoints,
+    )
+
+    cfg, train, cal, test, d1 = _load_and_validate_splits(args)
+    alpha, floors, inference, timing_mode = _common_config(cfg)
+    checkpoints = validate_checkpoints(cfg.get("checkpoints"), train[0]["stages"])
+
+    model = fit_model(train, floors)
+    q_by_checkpoint = calibrate_checkpoints(cal, model, checkpoints, alpha)
+    ev = evaluate_multicheckpoint(
+        test, cfg["tasks"], model, checkpoints, q_by_checkpoint, inference,
+        int(cfg.get("bootstrap_repeats", 5000)), timing_mode,
+    )
+
+    payload = {
+        "schema_version": 2,
+        "claim": "Bonferroni-corrected multi-checkpoint coverage-qualified downstream task stopping of iterative 6D pose refinement (PROP-CONF-03)",
+        "units": {"translation": "metres", "rotation": "radians", "time": "milliseconds"},
+        "protocol": {
+            "mode": "bonferroni_multicheckpoint",
+            "train_episodes": len(train),
+            "calibration_episodes": len(cal),
+            "test_episodes": len(test),
+            "alpha": alpha,
+            "checkpoints": [int(k) for k in checkpoints],
+            "num_checkpoints": len(checkpoints),
+            "per_checkpoint_alpha": alpha / len(checkpoints),
+            "target_marginal_whole_trajectory_coverage": 1 - alpha,
+            "feature_dim": d1,
+            "inference": inference,
+            "timing_mode": timing_mode,
+            "reference": "PROP-CONF-03, ~/ANSE.ASIA/toledo/registry/proposals/conformal_stopping_family.json; union bound machine-checked in ~/ANSE.ASIA/toledo/coq/canonical/PROP_CONF_03_union_bound.v",
+        },
+        "evaluation": ev,
+        "evidence_boundary": {
+            "online_gate_uses_oracle": False,
+            "physical_robot_result_inferred_from_pose_error": False,
+            "trajectory_prefix_timing_is_not_online_speedup": timing_mode != "online_policy_measured",
+            "result_scope": "instrumented iterative 6D pose backend; task readers are declared pose-error admissibility tests; certificate is checked ONLY at the predeclared checkpoint stages, each against its own Bonferroni-corrected quantile",
+        },
+    }
+    return payload
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--config", required=True)
+    ap.add_argument("--train", required=True)
+    ap.add_argument("--calibration", required=True)
+    ap.add_argument("--test", required=True)
+    ap.add_argument("--out", default="lab_results.json")
+    ap.add_argument(
+        "--mode",
+        default="whole_trajectory",
+        choices=["whole_trajectory", "bonferroni_multicheckpoint"],
+        help=(
+            "whole_trajectory: existing C7-C9 joint max-over-stages construction "
+            "(runs 1-2, unchanged). bonferroni_multicheckpoint: new PROP-CONF-03 "
+            "per-checkpoint construction (this run)."
+        ),
+    )
+    args = ap.parse_args()
+
+    if args.mode == "bonferroni_multicheckpoint":
+        payload = run_bonferroni_multicheckpoint(args)
+    else:
+        payload = run_whole_trajectory(args)
+
     Path(args.out).write_text(json.dumps(payload, indent=2, allow_nan=False), encoding="utf-8")
     print(json.dumps(payload, indent=2, allow_nan=False))
 
