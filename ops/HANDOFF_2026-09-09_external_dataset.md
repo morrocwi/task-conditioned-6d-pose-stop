@@ -165,3 +165,21 @@ that this repo's own culture requires before any public release. Once that revie
 `RELEASE READY: yes` (or its findings are resolved), the chair pushes `origin` and cuts the public release
 with this result included in the evidence lineage -- not before. If the review is still running when a
 reader checks GitHub, the honest answer is "not yet, on purpose, review in progress," not a bug.
+
+## RELEASED — v0.7.0, 2026-09-09
+Independent review (wf_934b7d58-e64) verdict PASS_WITH_WARNINGS: 2 confirmed blocks fixed (a /home
+path leak scrubbed via git filter-branch on the 7 unpushed commits; AI-vendor attribution trailers
+stripped from the real-data commit), 1 minor fixed (RESULT.md's coverage numerator corrected
+32/40 -> 35/40, matching the stated 87.5%), 1 major disclosed honestly rather than silently fixed
+(F4 -- the run-specific sampling/split parameters were committed alongside the results in the same
+commit as lab_results.json, not frozen in a separate prior commit; a real process gap, now stated
+plainly in the release notes rather than hidden). Chair verified the fixes independently, leak/
+attribution-scanned the full push range clean, pushed origin+local, tagged v0.7.0, created the
+GitHub release: https://github.com/morrocwi/task-conditioned-6d-pose-stop/releases/tag/v0.7.0.
+Draft release-notes file deleted after publishing (content now lives in the GitHub release itself).
+
+## Open TODO from this release
+F4 (process gap, disclosed not fixed): future real-data runs should commit the frozen
+config.json/split_manifest.json (or at least the sampling/split RULE, before any data-dependent
+value is chosen) in a commit that predates seeing any final-test result, not alongside it. Track
+this as a lab-protocol hardening item for the next real-backend run.
