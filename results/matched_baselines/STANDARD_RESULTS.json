@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "label": "[MatchedComparison-NewTestSeeds]",
+  "source": {
+    "workflow_run": 34312608667,
+    "workflow_commit": "990f49a038415e1f25c49324a1693d3f0253beaf",
+    "artifact_id": 10088946864,
+    "artifact_name": "completion-standard-ubuntu"
+  },
+  "configuration": {
+    "train_episodes": 160,
+    "calibration_episodes": 160,
+    "test_episodes": 120,
+    "max_stage": 20,
+    "points": 120,
+    "risk_target": 0.1,
+    "risk_confidence": 0.95
+  },
+  "evidence_boundary": {
+    "generated_point_clouds": true,
+    "matched_splits": true,
+    "test_outcomes_used_for_tuning": false,
+    "trajectory_prefix_timing_is_online_speedup": false,
+    "camera_executed": false,
+    "physical_robot_executed": false
+  },
+  "tasks": {
+    "top_suction": {
+      "full_budget": {"mean_endpoint_k": 20.0, "completion_rate": 0.975, "hold_rate": 0.0, "unsafe_act_rate": 0.025, "mean_trajectory_prefix_ms": 21.599095841661153},
+      "estimator_default": {"mean_endpoint_k": 13.1, "completion_rate": 0.975, "hold_rate": 0.0, "unsafe_act_rate": 0.025, "mean_trajectory_prefix_ms": 14.562644399998229},
+      "fixed_risk_checked": {"mean_endpoint_k": 18.0, "completion_rate": 0.9583333333333334, "hold_rate": 0.0, "unsafe_act_rate": 0.041666666666666664, "mean_trajectory_prefix_ms": 19.61531135833212},
+      "estimator_threshold_risk_checked": {"mean_endpoint_k": 11.3, "completion_rate": 0.95, "hold_rate": 0.0, "unsafe_act_rate": 0.05, "mean_trajectory_prefix_ms": 12.713330133335413},
+      "learned_scalar_risk_checked": {"mean_endpoint_k": 8.283333333333333, "completion_rate": 0.95, "hold_rate": 0.025, "unsafe_act_rate": 0.025, "mean_trajectory_prefix_ms": 9.60884150833247},
+      "raw_completion_envelope": {"mean_endpoint_k": 20.0, "completion_rate": 0.0, "hold_rate": 1.0, "unsafe_act_rate": 0.0, "mean_trajectory_prefix_ms": 21.599095841661153},
+      "trajectory_conformal_completion": {"mean_endpoint_k": 9.708333333333334, "completion_rate": 0.9666666666666667, "hold_rate": 0.03333333333333333, "unsafe_act_rate": 0.0, "mean_trajectory_prefix_ms": 11.076194883330478}
+    },
+    "label_alignment": {
+      "full_budget": {"mean_endpoint_k": 20.0, "completion_rate": 0.9583333333333334, "hold_rate": 0.0, "unsafe_act_rate": 0.041666666666666664, "mean_trajectory_prefix_ms": 21.599095841661153},
+      "estimator_default": {"mean_endpoint_k": 13.1, "completion_rate": 0.9583333333333334, "hold_rate": 0.0, "unsafe_act_rate": 0.041666666666666664, "mean_trajectory_prefix_ms": 14.562644399998229},
+      "fixed_risk_checked": {"mean_endpoint_k": 20.0, "completion_rate": 0.9583333333333334, "hold_rate": 0.0, "unsafe_act_rate": 0.041666666666666664, "mean_trajectory_prefix_ms": 21.599095841661153},
+      "estimator_threshold_risk_checked": {"mean_endpoint_k": 13.1, "completion_rate": 0.9583333333333334, "hold_rate": 0.0, "unsafe_act_rate": 0.041666666666666664, "mean_trajectory_prefix_ms": 14.562644399998229},
+      "learned_scalar_risk_checked": {"mean_endpoint_k": 9.025, "completion_rate": 0.9416666666666667, "hold_rate": 0.025, "unsafe_act_rate": 0.03333333333333333, "mean_trajectory_prefix_ms": 10.372809274999403},
+      "raw_completion_envelope": {"mean_endpoint_k": 20.0, "completion_rate": 0.0, "hold_rate": 1.0, "unsafe_act_rate": 0.0, "mean_trajectory_prefix_ms": 21.599095841661153},
+      "trajectory_conformal_completion": {"mean_endpoint_k": 10.166666666666666, "completion_rate": 0.9583333333333334, "hold_rate": 0.03333333333333333, "unsafe_act_rate": 0.008333333333333333, "mean_trajectory_prefix_ms": 11.545570649997217}
+    },
+    "keyed_insertion": {
+      "full_budget": {"mean_endpoint_k": 20.0, "completion_rate": 0.95, "hold_rate": 0.0, "unsafe_act_rate": 0.05, "mean_trajectory_prefix_ms": 21.599095841661153},
+      "estimator_default": {"mean_endpoint_k": 13.1, "completion_rate": 0.95, "hold_rate": 0.0, "unsafe_act_rate": 0.05, "mean_trajectory_prefix_ms": 14.562644399998229},
+      "fixed_risk_checked": {"mean_endpoint_k": 20.0, "completion_rate": 0.95, "hold_rate": 0.0, "unsafe_act_rate": 0.05, "mean_trajectory_prefix_ms": 21.599095841661153},
+      "estimator_threshold_risk_checked": {"mean_endpoint_k": 13.1, "completion_rate": 0.95, "hold_rate": 0.0, "unsafe_act_rate": 0.05, "mean_trajectory_prefix_ms": 14.562644399998229},
+      "learned_scalar_risk_checked": {"mean_endpoint_k": 9.8, "completion_rate": 0.925, "hold_rate": 0.03333333333333333, "unsafe_act_rate": 0.041666666666666664, "mean_trajectory_prefix_ms": 11.17047185833068},
+      "raw_completion_envelope": {"mean_endpoint_k": 20.0, "completion_rate": 0.0, "hold_rate": 1.0, "unsafe_act_rate": 0.0, "mean_trajectory_prefix_ms": 21.599095841661153},
+      "trajectory_conformal_completion": {"mean_endpoint_k": 11.025, "completion_rate": 0.95, "hold_rate": 0.05, "unsafe_act_rate": 0.0, "mean_trajectory_prefix_ms": 12.428090241665757}
+    }
+  }
+}
