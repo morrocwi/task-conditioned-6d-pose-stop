@@ -37,7 +37,9 @@ jobs:
           python theory/completion_envelope.py
       - name: Reproduce numerical backend (CI profile)
         run: python experiments/numerical_icp.py --profile ci --out-dir artifacts/numerical
-      - name: Check evidence boundary
+      - name: Reproduce calibrated completion envelope (CI profile)
+        run: python experiments/conformal_completion.py --profile ci --out-dir artifacts/conformal
+      - name: Check evidence boundaries
         shell: python
         run: |
           import json
@@ -50,9 +52,22 @@ jobs:
           assert b['camera_executed'] is False
           assert b['neural_pose_model_executed'] is False
           assert b['physical_robot_executed'] is False
-          print('evidence boundary: PASS')
+
+          c=json.loads(Path('artifacts/conformal/conformal_completion.json').read_text())
+          e=c['evidence_boundary']
+          assert c['label']=='[NumericalBackend+SplitCalibration]'
+          assert c['method']=='trajectory_level_split_conformal_completion_envelope'
+          assert e['iterative_rigid_registration_executed'] is True
+          assert e['hidden_ground_truth_used_online_by_gate'] is False
+          assert e['camera_executed'] is False
+          assert e['neural_pose_model_executed'] is False
+          assert e['physical_robot_executed'] is False
+          assert 0.0 <= c['evaluation']['in_distribution']['trajectory_envelope_coverage'] <= 1.0
+          print('evidence boundaries: PASS')
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: numerical-backend-${{ matrix.os }}
-          path: artifacts/numerical/
+          path: |
+            artifacts/numerical/
+            artifacts/conformal/
