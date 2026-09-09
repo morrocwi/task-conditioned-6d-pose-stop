@@ -1,0 +1,84 @@
+{
+  "q_by_checkpoint": {
+    "4": [
+      2.0854368305019086,
+      40
+    ],
+    "8": [
+      2.1714779345351833,
+      40
+    ],
+    "12": [
+      2.163638554082004,
+      40
+    ],
+    "15": [
+      2.2000413216344805,
+      40
+    ]
+  },
+  "ceiling": 0.03274911721483188,
+  "rho": 0.5,
+  "tasks": {
+    "top_suction": {
+      "theta_predeclared_median_m_at_k15": 0.0007464025551635286,
+      "m_at_k15_train_distribution": {
+        "min": 0.0002546123505147125,
+        "median": 0.0007464025551635286,
+        "max": 0.002132898819324584
+      },
+      "eps_saturates_at_ceiling_fraction_of_stage_checkpoint_pairs": 1.0,
+      "eps_distribution": {
+        "min": 0.03274911721483188,
+        "median": 0.03274911721483188,
+        "max": 0.03274911721483188
+      },
+      "gate_b_certificate_true_rate_by_checkpoint": {
+        "4": 0.0,
+        "8": 0.0,
+        "12": 0.0,
+        "15": 0.0
+      }
+    },
+    "label_alignment": {
+      "theta_predeclared_median_m_at_k15": 0.0007464025551635286,
+      "m_at_k15_train_distribution": {
+        "min": 0.0002546123505147125,
+        "median": 0.0007464025551635286,
+        "max": 0.002132898819324584
+      },
+      "eps_saturates_at_ceiling_fraction_of_stage_checkpoint_pairs": 1.0,
+      "eps_distribution": {
+        "min": 0.03274911721483188,
+        "median": 0.03274911721483188,
+        "max": 0.03274911721483188
+      },
+      "gate_b_certificate_true_rate_by_checkpoint": {
+        "4": 0.0,
+        "8": 0.0,
+        "12": 0.0,
+        "15": 0.0
+      }
+    },
+    "keyed_insertion": {
+      "theta_predeclared_median_m_at_k15": 0.0007464025551635286,
+      "m_at_k15_train_distribution": {
+        "min": 0.0002546123505147125,
+        "median": 0.0007464025551635286,
+        "max": 0.002132898819324584
+      },
+      "eps_saturates_at_ceiling_fraction_of_stage_checkpoint_pairs": 1.0,
+      "eps_distribution": {
+        "min": 0.03274911721483188,
+        "median": 0.03274911721483188,
+        "max": 0.03274911721483188
+      },
+      "gate_b_certificate_true_rate_by_checkpoint": {
+        "4": 0.0,
+        "8": 0.0,
+        "12": 0.0,
+        "15": 0.0
+      }
+    }
+  }
+}
