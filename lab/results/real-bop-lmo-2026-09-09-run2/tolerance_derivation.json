@@ -1,0 +1,47 @@
+{
+  "source": "lab/data/bop_lmo_episodes/train.jsonl",
+  "n_train_episodes": 40,
+  "stage_selection_rule": "lab.run_real_system.estimator_index (estimator's own convergence stage, else terminal stage)",
+  "percentile": 75.0,
+  "rounding_rule": "ceiling to 1 mm (translation) / 1 degree (rotation)",
+  "components": [
+    "tx",
+    "ty",
+    "tz",
+    "rx",
+    "ry",
+    "rz"
+  ],
+  "raw_percentile_value": [
+    0.013480095554949792,
+    0.012475704019108448,
+    0.012190944728855235,
+    0.12171783540961362,
+    0.12791282299871443,
+    0.14522847310747217
+  ],
+  "raw_percentile_value_deg_for_rotation": [
+    null,
+    null,
+    null,
+    6.973918260438866,
+    7.328864903430268,
+    8.32097857418733
+  ],
+  "derived_tolerance": [
+    0.014,
+    0.013000000000000001,
+    0.013000000000000001,
+    0.12217304763960307,
+    0.13962634015954636,
+    0.15707963267948966
+  ],
+  "derived_tolerance_deg_for_rotation": [
+    null,
+    null,
+    null,
+    7.0,
+    8.0,
+    9.0
+  ]
+}
