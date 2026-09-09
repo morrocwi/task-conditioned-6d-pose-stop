@@ -1,15 +1,14 @@
 {
   "alpha": 0.1,
-  "noninferiority_margin": 0.05,
   "bootstrap_repeats": 5000,
-  "error_floor": [
-    1e-05,
-    1e-05,
-    1e-05,
-    0.0001,
-    0.0001,
-    0.0001
-  ],
+  "timing_mode": "trajectory_prefix_estimate",
+  "error_floor": [1e-05, 1e-05, 1e-05, 0.0001, 0.0001, 0.0001],
+  "inference": {
+    "noninferiority_margin": 0.05,
+    "confidence_level": 0.95,
+    "minimum_test_episodes": 30,
+    "independent_sampling_unit": "episode"
+  },
   "tasks": {
     "top_suction": {
       "kind": "box",
