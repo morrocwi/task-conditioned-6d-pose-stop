@@ -12,8 +12,9 @@ def main():
     ap=argparse.ArgumentParser(); ap.add_argument('--profile',choices=('ci','quick','standard'),default='quick'); args=ap.parse_args()
     run([sys.executable,'-m','unittest','discover','-s','tests','-v'])
     run([sys.executable,'evidence/validate_claim_card.py'])
+    run([sys.executable,'theory/completion_envelope.py'])
     run([sys.executable,'benchmark.py'])
     run([sys.executable,'experiments/numerical_icp.py','--profile',args.profile,'--out-dir','artifacts/numerical'])
-    print('\nReproduction complete. See artifacts/numerical/NUMERICAL_RESULTS.md')
+    print('\nReproduction complete. See artifacts/numerical/NUMERICAL_RESULTS.md and theory/TOLEDO_COMPLETION_ENVELOPE.md')
 
 if __name__=='__main__': main()
