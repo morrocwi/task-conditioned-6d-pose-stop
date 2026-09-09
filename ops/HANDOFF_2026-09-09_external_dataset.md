@@ -184,6 +184,14 @@ config.json/split_manifest.json (or at least the sampling/split RULE, before any
 value is chosen) in a commit that predates seeing any final-test result, not alongside it. Track
 this as a lab-protocol hardening item for the next real-backend run.
 
+**F4 RESOLVED, 2026-09-09, run2**: commit `d9ac505f40df81344ffe0e3737cb1b51d36bf13e`
+(2026-09-09T12:53:35+07:00) froze `lab/results/real-bop-lmo-2026-09-09-run2/config.json`,
+`split_manifest.json`, `TOLERANCE_DECISION.md`, and `tolerance_derivation.json` (plus
+`lab/derive_tolerances_from_train.py`) in a standalone commit, strictly before
+`lab/run_real_system.py` was ever invoked against `test.jsonl` for run2 (that invocation and
+`lab_results.json` came in a later, separate commit). No calibration/test statistic was read
+before the freeze commit. This is the process fix F4 asked for.
+
 ## Second real-data run requested, 2026-09-09: "test dataset again"
 
 Founder: "and. test dataset again" (terse, no further detail attached). Interpreted as: run another
@@ -203,3 +211,29 @@ outcomes) in its own commit, before opening final test; (2) re-run the full lab 
 whatever happens plainly, including if the result is unchanged, worse, or newly supports H2-H4.
 Same honesty guardrails as the first run (CONTRIBUTING.md, evidence/ADVERSARIAL_REVIEW_RESPONSE.md,
 this file's novelty/positioning constraints above) apply unchanged.
+
+### Run2 executed, 2026-09-09
+
+Decision: **re-derived** tolerances from TRAIN-split achievable ICP accuracy (not reused
+identical), because reusing identical tolerances would deterministically reproduce run 1's own
+already-stated diagnosis with no new information. Method: 75th percentile of the estimator-
+convergence-stage absolute pose error across the 40 TRAIN episodes (unchanged data/split/seeds
+from run 1), rounded up to 1mm/1deg, computed by `lab/derive_tolerances_from_train.py` reading
+ONLY `train.jsonl`. Full rationale in
+`lab/results/real-bop-lmo-2026-09-09-run2/TOLERANCE_DECISION.md`.
+
+Frozen config/split/decision commit (predates the FINAL TEST evaluator run, fixing F4):
+`d9ac505f40df81344ffe0e3737cb1b51d36bf13e`, 2026-09-09T12:53:35+07:00.
+
+Result: unchanged from run 1 — `certificate_rate = 0.0`, `k_C<k_E` = 0/40, 100% HOLD, all three
+tasks, held-out coverage 87.5% (identical, since coverage depends on calibration data/feature
+model, not task tolerances). The loosened tolerances (2.6-2.8x translation, 1.4-1.8x rotation)
+did raise the estimator's own completion rate (2.5%->32.5%, 2.5%->27.5%, 0%->10%), which rules
+out run 1's own leading hypothesis that tolerances were simply too tight, and points instead at
+the calibrated-envelope-construction step (observable feature vector / conformal calibration,
+`cqts/safety.py`) as the more likely bottleneck. Non-inferiority FAILS more clearly than run 1
+(LCB -49.1% / -43.9% / -23.7% vs run 1's -13.2% / -13.2% / -8.8%). Full detail:
+`lab/results/real-bop-lmo-2026-09-09-run2/RESULT.md`. CLAIMS.md and README.md updated
+accordingly; no existing OPEN/HOLD item retired.
+
+Test suite, leak-scan, and push status: see the commit(s) following this handoff entry.

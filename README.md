@@ -79,6 +79,7 @@ Adversarial regression tests retain the specific small-n, NaN, and n=1 inference
 6. **Reduced-configuration repeated diagnostic** — repeated TRAIN → CALIBRATION → TEST cycles under a smaller computational configuration (`experiments/replication_study.py`).
 7. **University lab harness** — backend-agnostic real-system interface (`lab/`).
 8. **Real-sensor ICP run (in-house, not independent)** — real BOP LM-O RGB-D data through a real numpy+scipy point-to-point ICP/Kabsch backend, via the `lab/` harness (`lab/results/real-bop-lmo-2026-09-09/`). This is a negative/falsifying result: see "Real-sensor evidence" below.
+9. **Second real-sensor ICP run, tolerance-rederivation cycle (in-house, not independent)** — same backend/dataset/split as run 8, task tolerances re-derived from TRAIN-split achievable accuracy instead of reused from the numerical fixture (`lab/results/real-bop-lmo-2026-09-09-run2/`). Same negative/falsifying result, and it rules out "the tolerances were just too tight" as the explanation: see "Real-sensor evidence" below.
 
 The numerical research evidence uses generated point clouds. No camera, neural pose estimator, contact physics, or physical robot is silently implied by those results.
 
@@ -113,6 +114,31 @@ backend/task/tolerance/budget combination. It does not retire any existing
 OPEN/HOLD item in the Claim boundary section below — real RGB-D data was used,
 but no real neural pose backend, no independent lab, no GPU/online-policy
 timing, and no physical robot were involved.
+
+### Second real-sensor cycle: re-deriving tolerances from TRAIN
+
+`lab/results/real-bop-lmo-2026-09-09-run2/` re-runs the identical dataset,
+split, and ICP backend as above, changing exactly one factor: task
+tolerances were re-derived from the 75th percentile of TRAIN-split
+achievable ICP accuracy (never from calibration/test data) instead of reused
+from the numerical fixture — see
+[`TOLERANCE_DECISION.md`](lab/results/real-bop-lmo-2026-09-09-run2/TOLERANCE_DECISION.md)
+for the decision and reproducible derivation
+(`lab/derive_tolerances_from_train.py`). The frozen config and split were
+committed (`d9ac505f40df81344ffe0e3737cb1b51d36bf13e`) before FINAL TEST was
+opened, fixing the F4 process gap disclosed in the v0.7.0 release notes.
+
+Result: unchanged. Even with tolerances loosened 2.6-2.8x (translation) and
+1.4-1.8x (rotation) — which did raise the *estimator's own* completion rate
+substantially — the certificate's completion rate stayed at exactly 0% for
+all three tasks, and `k_C < k_E` remained 0/40. Held-out coverage (87.5%)
+was identical to run 1, since it depends on the calibration data and
+observable-feature model, not on task tolerances. This rules out run 1's own
+leading hypothesis ("tolerances were simply too tight") and points the
+diagnosis at the calibrated-envelope-construction step (observable feature
+vector / conformal calibration) rather than at the tolerance numbers. Full
+accounting in
+[`lab/results/real-bop-lmo-2026-09-09-run2/RESULT.md`](lab/results/real-bop-lmo-2026-09-09-run2/RESULT.md).
 
 ## First frozen learned-shape final test
 
