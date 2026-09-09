@@ -1,0 +1,95 @@
+{
+  "n_train_episodes": 40,
+  "n_stage_readings": 640,
+  "reused_from_run5": {
+    "lambda_ref": 0.33927484832749355,
+    "cap": 0.03274911721483188
+  },
+  "per_task_train_diagnostic": {
+    "top_suction": {
+      "stage_invariant_true_rate": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "initial_streak_min": 16,
+      "initial_streak_median": 16.0,
+      "initial_streak_max": 16,
+      "fraction_full_length_streak": 1.0
+    },
+    "label_alignment": {
+      "stage_invariant_true_rate": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "initial_streak_min": 16,
+      "initial_streak_median": 16.0,
+      "initial_streak_max": 16,
+      "fraction_full_length_streak": 1.0
+    },
+    "keyed_insertion": {
+      "stage_invariant_true_rate": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "initial_streak_min": 16,
+      "initial_streak_median": 16.0,
+      "initial_streak_max": 16,
+      "fraction_full_length_streak": 1.0
+    }
+  },
+  "theta": 4,
+  "theta_method": "smallest of run3's own frozen Bonferroni checkpoint set {4,8,12,15} (an existing, non-run6-tuned system constant), chosen deliberately small per the handoff's stated preference to isolate the memory variable cleanly under path (a)",
+  "residual_rmse_summary": {
+    "min": 0.011854805504799875,
+    "p25": 0.014826086094955325,
+    "median": 0.018320411722306557,
+    "p75": 0.022031343778201585,
+    "max": 0.05606508210478502
+  },
+  "residual_scale_ref": 0.018320411722306557,
+  "residual_scale_ref_method": "median(ICP residual RMSE) over every TRAIN stage reading",
+  "residual_cap_multiplier": 2.0,
+  "residual_cap_multiplier_method": "predeclared 2x doubling of run5's own CAP, frozen before test.jsonl is read for run6"
+}
