@@ -253,3 +253,24 @@ not `finite_diagnostic` -- P08 disciplines 2 (test the prediction) and 4 (indepe
 re-verification) are not yet applied; see the full diagnosis record for exactly what's missing.
 This is the next real-data cycle to run when authorized (a third BOP-LMO run, same predeclare-
 before-final-test discipline as run 2).
+
+## Toledo registration + Coq witness, 2026-09-09
+
+Per Toledo-first discipline, the base split-conformal machinery (C7-C9, already in
+`cqts/safety.py`, retroactively) and the new Bonferroni-corrected multi-checkpoint fix designed
+today are registered as Toledo proposals
+(`~/ANSE.ASIA/toledo/registry/proposals/conformal_stopping_family.json`). The union-bound argument
+behind the new fix is machine-checked, axiom-free
+(`~/ANSE.ASIA/toledo/coq/canonical/PROP_CONF_03_union_bound.v`). Merge into Toledo's live registry
+is paused on a founder ruling (does split-conformal prediction become a new Toledo root, like CMC)
+-- this does not block implementing and testing the fix in THIS repo; cite the proposal ids
+(PROP-CONF-01/02/03) in any code/doc reference until real weld/M codes are assigned.
+
+Cleared-for-build spec for the next (third) real-data cycle: restrict certificate checks to K'<=4
+predeclared checkpoint stages (feasibility bound computed for n=40 calibration episodes, alpha=0.1
+-- see GLS-2026-005's diagnosis revision for the exact arithmetic), calibrate each checkpoint's
+nonconformity score (coordinate-max only, no stage-aggregation) at level alpha/K' via the existing
+`cqts/safety.py::safe_split_conformal_quantile`, and combine via the union bound proved in
+PROP-CONF-03. This is a NEW code path (do not touch the existing C7-C9 joint construction used by
+runs 1-2 -- keep both, so run 1/2 remain reproducible), predeclared and frozen before opening final
+test, same discipline as run 2.
