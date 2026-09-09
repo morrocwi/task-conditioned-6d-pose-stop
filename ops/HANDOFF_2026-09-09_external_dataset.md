@@ -126,3 +126,42 @@ certificate rate on all 3 tasks (calibrated envelope too wide for the reused tol
 Ultracode review+release workflow launched: wf_934b7d58-e64. It will NOT push to origin or create
 a GitHub release itself — reads its report, then the chair does the actual public tag/push if
 ops/RELEASE_NOTES_v0.7_DRAFT.md says RELEASE READY: yes.
+
+## Roadmap offered by founder, 2026-09-09 — SEE -> IMAGINE -> CALIBRATE -> CHECK -> DECIDE -> ACT/LOOK-AGAIN
+
+Expands the two-faculty framing above into a 6-stage target architecture. Honest status against it
+(repo state as of commit c84ee93 + the uncommitted-to-origin real-data run fd65d27):
+
+- SEE (adapter ingesting a real backend's per-stage state): EXISTS as a spec (`lab/ADAPTER_TEMPLATE.py`)
+  and was exercised for the first time this session against a real ICP backend (not yet FoundationPose
+  or another learned backend).
+- IMAGINE (completion set C_k of not-yet-ruled-out states): EXISTS, this is the repo's core mechanism.
+- CALIBRATE (statistical coverage via `cqts/safety.py`'s conformal quantile, fail-closed on
+  NaN/overflow/degenerate-n): EXISTS, hardened after the adversarial review.
+- CHECK (task reader over every retained completion): EXISTS (`Y_T,k` / `fail_closed_task_pass`).
+- DECIDE beyond ACT/CONTINUE/HOLD (choosing among REFINE/NEW_VIEW/MOVE_CAMERA/RESET via an
+  information-value objective `a* = argmax_a G_T(a|C_k)/c(a)`): DOES NOT EXIST YET. The founder's own
+  words: "สมการ G_T,J_T มีอยู่ใน theory แล้ว แต่ transition/action model ยังต้อง validate จริง" (the
+  objective exists on paper, the transition/action model is unvalidated) -- this is real, unbuilt,
+  unvalidated future work, not a documentation gap. Do not claim it exists in any release material.
+- ACT/HOLD as a first-class decision rather than a failure mode: already demonstrated qualitatively in
+  the matched-baseline numerical result (keyed_insertion: certificate matches estimator-default
+  completion at 95% while moving some unsafe-ACT mass to HOLD, at a lower mean endpoint) -- this IS
+  real evidence already in the repo, just not yet on real RGB-D data (the just-completed BOP run found
+  0% certificate rate on real data at the current tolerances, so this qualitative story has NOT yet
+  been reproduced on real sensor data).
+
+**Action-selection (G_T/J_T-driven NEW_VIEW/REFINE/RESET) is scoped as a distinct, later project
+phase** -- it is a materially new build (a policy over sensing actions, not just a stopping rule),
+not a documentation or framing change. Do not fold it into the current release.
+
+## Clarification, same day: why the BOP result is not yet on public GitHub
+
+The founder separately checked github.com/morrocwi/task-conditioned-6d-pose-stop directly and (correctly)
+did not find the BOP/RGB-D result there. This is by design, not an oversight: commit `fd65d27` (the real
+BOP-LMO run) and the handoff commits around it were deliberately pushed only to the local Forgejo mirror,
+held back from `origin` pending the independent-review workflow (`wf_934b7d58-e64`, launched this session)
+that this repo's own culture requires before any public release. Once that review reports
+`RELEASE READY: yes` (or its findings are resolved), the chair pushes `origin` and cuts the public release
+with this result included in the evidence lineage -- not before. If the review is still running when a
+reader checks GitHub, the honest answer is "not yet, on purpose, review in progress," not a bug.
