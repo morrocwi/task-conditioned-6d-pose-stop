@@ -174,6 +174,28 @@ def local_proxy(model, R, t, corr):
     return np.r_[sd[3:], sd[:3]]
 
 
+def normal_equations_H(model, R, t, corr):
+    """ICP normal-equations (Gauss-Newton) Hessian H = J^T J at the current
+    linearization point, over the same inlier correspondences local_proxy()
+    above uses (identical J: residual r = R*p+t - q, J_i = [-skew(R*p_i), I_3],
+    columns ordered [omega(3), t(3)]).
+
+    This is a genuinely computed diagnostic quantity: it is what local_proxy()
+    already inverts internally (J.T @ J) to build its covariance proxy, just
+    exposed here directly rather than only its diagonal-inverse. It is NOT
+    part of the Kabsch update itself (best_fit_kabsch is a closed-form SVD
+    solve, not an iterative linearized normal-equations solve) -- H_k is a
+    post-hoc diagnostic of the same correspondences, added per
+    registry/proposals/spectral_decay_predictor.json (PROP-DECAY-01,
+    ~/ANSE.ASIA/toledo) to test the H_k ~ graph-Laplacian analogy against
+    this real backend. See lab/decay_predictor.py for the honest finding on
+    whether that analogy holds structurally here.
+    """
+    X = apply(R, t, model)
+    J = np.vstack([np.hstack((-skew(x), np.eye(3))) for x in X])
+    return J.T @ J
+
+
 @dataclass
 class ICPStage:
     k: int
@@ -187,6 +209,11 @@ class ICPStage:
     proxy: np.ndarray
     incremental_ms: float
     is_estimator_stop: bool = False
+    # Optional diagnostic ICP normal-equations Hessian H_k = J^T J (6x6 SPD),
+    # added for PROP-DECAY-01 (see normal_equations_H() above). Defaulted to
+    # None so any existing caller/test that builds an ICPStage positionally
+    # without this field is unaffected.
+    hessian: np.ndarray | None = None
 
 
 def run_icp(model_pts, scene_pts, R0, t0, max_iter=20, damping=0.65, inlier_mult=3.0):
@@ -208,13 +235,14 @@ def run_icp(model_pts, scene_pts, R0, t0, max_iter=20, damping=0.65, inlier_mult
         med = float(np.median(dist)) if len(dist) else float("inf")
         inliers = dist <= inlier_mult * max(med, 1e-9)
         inlier_fraction = float(np.mean(inliers))
-        proxy = local_proxy(model_pts[inliers] if inliers.sum() >= 10 else model_pts,
-                             R, t,
-                             corr[inliers] if inliers.sum() >= 10 else corr)
+        proxy_model = model_pts[inliers] if inliers.sum() >= 10 else model_pts
+        proxy_corr = corr[inliers] if inliers.sum() >= 10 else corr
+        proxy = local_proxy(proxy_model, R, t, proxy_corr)
+        H = normal_equations_H(proxy_model, R, t, proxy_corr)
         if k == max_iter or inliers.sum() < 10:
             elapsed_ms = (time.perf_counter() - tick) * 1000.0
             stages.append(ICPStage(k, R.copy(), t.copy(), 0.0, 0.0, rmse, inlier_fraction,
-                                    int(inliers.sum()), proxy, elapsed_ms))
+                                    int(inliers.sum()), proxy, elapsed_ms, hessian=H))
             break
         dR, dtv = best_fit_kabsch(X[inliers], corr[inliers])
         w = rotvec(dR)
@@ -224,7 +252,7 @@ def run_icp(model_pts, scene_pts, R0, t0, max_iter=20, damping=0.65, inlier_mult
         elapsed_ms = (time.perf_counter() - tick) * 1000.0
         stages.append(ICPStage(k, R.copy(), t.copy(), float(np.linalg.norm(delta_t)),
                                 float(np.linalg.norm(delta_w)), rmse, inlier_fraction,
-                                int(inliers.sum()), proxy, elapsed_ms))
+                                int(inliers.sum()), proxy, elapsed_ms, hessian=H))
         R, t = R_new, t_new
     return stages
 

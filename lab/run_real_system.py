@@ -29,6 +29,7 @@ from cqts.safety import (
     safe_split_conformal_quantile,
     validate_task_spec,
 )
+from lab.decay_predictor import DecayModel, decay_predicted_log_error
 
 
 @dataclass(frozen=True)
@@ -141,6 +142,13 @@ def fit_model(train, error_floor):
 
 
 def predicted_log_error(stage, axis, model):
+    # PROP-DECAY-01 (fourth real-data cycle, ops/HANDOFF_2026-09-09_external_dataset.md):
+    # additive branch only -- C6's own fitted log-linear path below (Model/
+    # fit_model) is unchanged for any caller not passing a DecayModel. See
+    # lab/decay_predictor.py for the closed-form decay predictor and its
+    # honest H_k~graph-Laplacian structural finding.
+    if isinstance(model, DecayModel):
+        return decay_predicted_log_error(stage, axis, model)
     value = float(design(stage["features"], model.mean, model.scale) @ model.beta[axis])
     if not math.isfinite(value):
         raise CertificateNumericsError("predicted log error is non-finite")
@@ -393,6 +401,58 @@ def run_whole_trajectory(args):
     return payload
 
 
+def run_decay_predictor(args):
+    """PROP-DECAY-01 (fourth real-data cycle): C6 replaced by the closed-form
+    kappa/rho decay predictor (lab/decay_predictor.py); C7-C9 whole-trajectory
+    conformal machinery below (nonconformity/conformal_quantile/evaluate) is
+    the SAME code runs 1-2 used (chosen over the C9b Bonferroni-checkpoint
+    path because run3 found the whole-trajectory joint q~2.0008 SMALLER than
+    every per-checkpoint q in [2.085,2.200] -- see
+    lab/results/real-bop-lmo-2026-09-09-run3/RESULT.md). No fit_model()/TRAIN
+    regression is used: the decay predictor is closed-form (kappa_k from
+    H_k, no free parameters fit on TRAIN data).
+    """
+    cfg, train, cal, test, d1 = _load_and_validate_splits(args)
+    alpha, floors, inference, timing_mode = _common_config(cfg)
+
+    model = DecayModel(error_floor=np.asarray(floors, float))
+    scores = [nonconformity(ep, model) for ep in cal]
+    q, rank = conformal_quantile(scores, alpha)
+    ev = evaluate(test, cfg["tasks"], model, q, inference, int(cfg.get("bootstrap_repeats", 5000)), timing_mode)
+
+    payload = {
+        "schema_version": 2,
+        "claim": "coverage-qualified downstream task stopping of iterative 6D pose refinement, with C6 replaced by a closed-form condition-number decay predictor (PROP-DECAY-01)",
+        "units": {"translation": "metres", "rotation": "radians", "time": "milliseconds"},
+        "protocol": {
+            "mode": "decay_predictor",
+            "predictor": "PROP-DECAY-01: rho_k = Kantorovich contraction bound of H_k=J^T J (ordinary 6x6 matrix condition number, NOT a graph Fiedler value -- see lab/decay_predictor.py module docstring for why q_formal/M.07's graph-diameter floor does not apply to H_k); s_k,i = rho_k^(K-k) * max(|proxy_i|, floor_i)",
+            "calibration_construction": "whole_trajectory (C7-C9, identical code/config to runs 1-2)",
+            "train_episodes": len(train),
+            "calibration_episodes": len(cal),
+            "test_episodes": len(test),
+            "alpha": alpha,
+            "target_marginal_whole_trajectory_coverage": 1 - alpha,
+            "calibration_quantile_rank": rank,
+            "calibration_unbounded": bool(q == math.inf),
+            "q": None if q == math.inf else q,
+            "feature_dim": d1,
+            "inference": inference,
+            "timing_mode": timing_mode,
+            "reference": "PROP-DECAY-01, ~/ANSE.ASIA/toledo/registry/proposals/spectral_decay_predictor.json",
+        },
+        "evaluation": ev,
+        "evidence_boundary": {
+            "online_gate_uses_oracle": False,
+            "physical_robot_result_inferred_from_pose_error": False,
+            "trajectory_prefix_timing_is_not_online_speedup": timing_mode != "online_policy_measured",
+            "result_scope": "instrumented iterative 6D pose backend; task readers are declared pose-error admissibility tests",
+            "h_k_graph_laplacian_analogy": "REFUTED structurally for this backend -- H_k is a fixed 6x6 SPD Gauss-Newton Hessian over pose DOF, not an n-node graph Laplacian with a diameter; see lab/decay_predictor.py",
+        },
+    }
+    return payload
+
+
 def run_bonferroni_multicheckpoint(args):
     # Imported here (not at module top) to avoid a hard import-time dependency
     # from the existing whole-trajectory path onto the new module, and to
@@ -455,17 +515,21 @@ def main():
     ap.add_argument(
         "--mode",
         default="whole_trajectory",
-        choices=["whole_trajectory", "bonferroni_multicheckpoint"],
+        choices=["whole_trajectory", "bonferroni_multicheckpoint", "decay_predictor"],
         help=(
             "whole_trajectory: existing C7-C9 joint max-over-stages construction "
-            "(runs 1-2, unchanged). bonferroni_multicheckpoint: new PROP-CONF-03 "
-            "per-checkpoint construction (this run)."
+            "(runs 1-2, unchanged). bonferroni_multicheckpoint: PROP-CONF-03 "
+            "per-checkpoint construction (run3, unchanged). decay_predictor: "
+            "PROP-DECAY-01, C6 replaced by the closed-form kappa/rho decay "
+            "predictor, C7-C9 whole-trajectory calibration reused (run4)."
         ),
     )
     args = ap.parse_args()
 
     if args.mode == "bonferroni_multicheckpoint":
         payload = run_bonferroni_multicheckpoint(args)
+    elif args.mode == "decay_predictor":
+        payload = run_decay_predictor(args)
     else:
         payload = run_whole_trajectory(args)
 

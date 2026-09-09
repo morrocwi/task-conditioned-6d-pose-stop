@@ -36,6 +36,7 @@ guarantee frozen in config.json.
 """
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import sys
@@ -47,13 +48,18 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from lab.adapter_bop import export_episode, mark_estimator_stop
+from lab.adapter_bop import export_episode, export_episode_decay, mark_estimator_stop
 from lab.bop_icp_backend import load_ply_vertices_m, perturb_pose, run_icp, subsample_points
 
 DATA_DIR = ROOT / "lab" / "data" / "bop_lmo"
 SCENE_DIR = DATA_DIR / "test" / "000002"
 MODELS_DIR = DATA_DIR / "models"
 OUT_DIR = ROOT / "lab" / "data" / "bop_lmo_episodes"
+# run4 (PROP-DECAY-01): identical data/frames/seeds/ICP as above, written to a
+# SEPARATE output directory via export_episode_decay (extra "decay" field per
+# stage). Selected with --variant decay; default (no args, as run1-3 always
+# invoked this script) is byte-identical to the original behavior.
+OUT_DIR_DECAY = ROOT / "lab" / "data" / "bop_lmo_episodes_decay"
 
 OBJECT_IDS = [1, 8]
 N_FRAMES_TOTAL = 60
@@ -90,8 +96,11 @@ def frame_mask_index(gt_frame, obj_id):
     raise KeyError(f"object {obj_id} not present in frame")
 
 
-def main():
+def main(variant: str = "standard"):
     from PIL import Image
+
+    export_fn = export_episode_decay if variant == "decay" else export_episode
+    out_dir = OUT_DIR_DECAY if variant == "decay" else OUT_DIR
 
     scene_gt = load_json(SCENE_DIR / "scene_gt.json")
     scene_cam = load_json(SCENE_DIR / "scene_camera.json")
@@ -134,14 +143,14 @@ def main():
         verts = load_ply_vertices_m(MODELS_DIR / f"obj_{oid:06d}.ply")
         models_m[oid] = subsample_points(verts, MODEL_SUBSAMPLE_N, MODEL_SUBSAMPLE_SEED_BASE + oid)
 
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True, exist_ok=True)
     split_map = {"train": train_frames, "calibration": cal_frames, "test": test_frames}
     manifest = {"objects": OBJECT_IDS, "frame_draw_seed": FRAME_DRAW_SEED,
                 "split_shuffle_seed": SPLIT_SHUFFLE_SEED, "splits": {}}
 
     n_written = {"train": 0, "calibration": 0, "test": 0}
     for split_name, frames in split_map.items():
-        out_path = OUT_DIR / f"{split_name}.jsonl"
+        out_path = out_dir / f"{split_name}.jsonl"
         if out_path.exists():
             out_path.unlink()
         episode_ids = []
@@ -168,14 +177,17 @@ def main():
                 scene_sub = subsample_points(scene_pts, 800, episode_seed)
                 stages = run_icp(models_m[oid], scene_sub, R0, t0, max_iter=MAX_ITER)
                 mark_estimator_stop(stages)
-                export_episode(episode_id, stages, (R_gt, t_gt), out_path)
+                export_fn(episode_id, stages, (R_gt, t_gt), out_path)
                 episode_ids.append(episode_id)
                 n_written[split_name] += 1
         manifest["splits"][split_name] = {"frames": frames, "episode_ids": episode_ids}
 
-    Path(OUT_DIR / "split_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    Path(out_dir / "split_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     print(json.dumps({"episodes_written": n_written}, indent=2))
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--variant", choices=["standard", "decay"], default="standard")
+    args = parser.parse_args()
+    main(args.variant)

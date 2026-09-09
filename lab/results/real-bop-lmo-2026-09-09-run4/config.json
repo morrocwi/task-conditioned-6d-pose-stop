@@ -1,0 +1,134 @@
+{
+  "_predeclaration_note": "run4 (2026-09-09, fourth real-data cycle, PROP-DECAY-01 -- ~/ANSE.ASIA/toledo/registry/proposals/spectral_decay_predictor.json). Replaces C6's fitted log-linear error-scale predictor with a closed-form decay predictor s_k,i = rho_k^(K-k) * max(|proxy_i|, floor_i), rho_k = Kantorovich contraction bound (kappa_k-1)/(kappa_k+1) from the ICP normal-equations Hessian H_k=J^T J's own ordinary 6-eigenvalue condition number (lab/decay_predictor.py). Calibration construction is UNCHANGED whole_trajectory C7-C9 (mode=decay_predictor in lab/run_real_system.py combines the new predictor with the OLD calibration code) -- chosen over the run3 Bonferroni checkpoint construction because run3 found the joint whole-trajectory q~2.0008 smaller than every per-checkpoint q in [2.085, 2.200]. Task tolerances, error_floor, alpha, inference config, and dataset/split are all reused BYTE-IDENTICAL from run2/run3 (only the predictor and its data files vary) -- see RATIONALE.md. Data files (lab/data/bop_lmo_episodes_decay/{train,calibration,test}.jsonl) are regenerated from the SAME frames/seeds/ICP as run1-3's lab/data/bop_lmo_episodes/ (confirmed byte-identical split_manifest.json splits), with one added 'decay' field per stage; the original run1-3 data files and lab/run_real_system.py --mode whole_trajectory/bonferroni_multicheckpoint paths are untouched and remain independently reproducible.",
+  "backend": {
+    "name": "in-repo numpy+scipy point-to-point ICP/Kabsch (lab/bop_icp_backend.py)",
+    "version_commit": "task-conditioned-6d-pose-stop @ ed8735ad04c17efe1d1bc0a0cec4625071d2bdbb",
+    "model_weights": "none (no learned model; closed-form SVD/Kabsch rigid-transform update each iteration)",
+    "note": "Backend gains one additive diagnostic (lab/bop_icp_backend.py:normal_equations_H, ICPStage.hessian) exposing H_k=J^T J; the Kabsch closed-form update itself is unchanged. This run4 config/freeze commit is built on top of the run3 commit."
+  },
+  "dataset": {
+    "name": "BOP LineMOD-Occlusion (LM-O) test_bop19 subset, scene 000002",
+    "source": "https://huggingface.co/datasets/bop-benchmark/lmo (lmo_base.zip, lmo_models.zip, lmo_test_bop19.zip)",
+    "objects": [
+      1,
+      8
+    ],
+    "object_names": {
+      "1": "ape",
+      "8": "driller"
+    },
+    "frame_prefilter": "frames dropped from the sampling pool if either object has fewer than 300 mask_visib pixels with a nonzero real depth reading (real sensor dropout / heavy occlusion), applied before any random draw",
+    "frames_in_pool_after_prefilter": 177,
+    "frame_draw": "60 frames drawn without replacement from the prefiltered pool, numpy Generator seed 20260909",
+    "frame_split": "60 drawn frames permuted (numpy Generator seed 20260909) and cut 20/20/20 into TRAIN/CALIBRATION/FINAL TEST; all episodes (both objects) from one frame land in exactly one split",
+    "episode_definition": "one (frame, object) pair",
+    "episodes_per_split": {
+      "train": 40,
+      "calibration": 40,
+      "test": 40
+    },
+    "independent_sampling_unit": "frame (not object-episode): the true number of independent draws is 60 frames, split 20/20/20; the two per-frame object episodes share the same depth-noise realization and are therefore not treated as independent units by the split rule",
+    "object_segmentation": "dataset-provided ground-truth mask_visib for the target object in each frame; no online detector/segmentation network is executed -- this experiment tests the REFINEMENT stage only, not detection/segmentation",
+    "initial_pose": "documented bounded random perturbation of real ground truth (lab/bop_icp_backend.py:perturb_pose): translation += isotropic Gaussian noise sigma=15mm per axis; rotation = random-axis rotation with angle ~ Uniform[5,20] degrees composed with ground-truth rotation. This simulates a coarse detector stage; it is not a full autonomous detection pipeline.",
+    "ground_truth_orthonormalization": "BOP cam_R_m2c matrices are not exactly orthonormal at float precision (observed residual up to ~3e-4); both ground-truth and estimated rotations are projected to the nearest proper rotation via SVD (lab/bop_icp_backend.py:orthonormalize) before oracle error computation, applied identically to both."
+  },
+  "estimator_side_stopping_rule": "two consecutive ICP stages with |delta_t| <= 0.5mm and |delta_r| <= 0.1deg (lab/bop_icp_backend.py:estimator_converged); if never satisfied within the 15-iteration budget, lab/run_real_system.py's estimator_index() falls back to the terminal stage",
+  "refinement_budget_max_iter": 15,
+  "observable_feature_vector": [
+    "k (stage index)",
+    "log(ICP residual RMSE + 1e-9)",
+    "inlier_fraction (correspondences within 3x median distance)",
+    "log(|translation update| + 1e-9)",
+    "log(|rotation update| + 1e-9)",
+    "log(n_correspondences + 1)",
+    "log(local dispersion proxy tx sd + 1e-9)",
+    "log(local dispersion proxy ty sd + 1e-9)",
+    "log(local dispersion proxy tz sd + 1e-9)",
+    "log(local dispersion proxy rx sd + 1e-9)",
+    "log(local dispersion proxy ry sd + 1e-9)",
+    "log(local dispersion proxy rz sd + 1e-9)"
+  ],
+  "alpha": 0.1,
+  "bootstrap_repeats": 5000,
+  "timing_mode": "trajectory_prefix_estimate",
+  "timing_mode_reason": "incremental_ms is real measured per-iteration wall-clock (cKDTree query + Kabsch SVD), but no separate online_policy_measured dual-policy execution was run; a latency-reduction PASS is therefore deliberately disabled by this timing_mode, matching lab/README.md section 5/7",
+  "error_floor": [
+    1e-05,
+    1e-05,
+    1e-05,
+    0.0001,
+    0.0001,
+    0.0001
+  ],
+  "inference": {
+    "noninferiority_margin": 0.05,
+    "confidence_level": 0.95,
+    "minimum_test_episodes": 30,
+    "independent_sampling_unit": "episode"
+  },
+  "inference_caveat": "minimum_test_episodes=30 and independent_sampling_unit=episode are reused unchanged from lab/config.example.json's evaluator field, which the public evaluator (lab/run_real_system.py) treats as one unit per JSONL row (40 test rows satisfy minimum_test_episodes=30). This is a WEAKER independence assumption than dataset.independent_sampling_unit=frame above (only 20 independent test frames), because the evaluator has no native concept of frame-level clustering; the discrepancy is reported explicitly rather than silently reconciled, and the true independent count for power purposes is 20 frames, not 40 episodes.",
+  "tasks": {
+    "top_suction": {
+      "kind": "box",
+      "mask": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "tol": [
+        0.014,
+        0.013,
+        0.013,
+        0.12217304763960307,
+        0.13962634015954636,
+        1000000000.0
+      ]
+    },
+    "label_alignment": {
+      "kind": "box",
+      "mask": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "tol": [
+        0.014,
+        0.013,
+        0.013,
+        0.12217304763960307,
+        0.13962634015954636,
+        0.15707963267948966
+      ]
+    },
+    "keyed_insertion": {
+      "kind": "l1",
+      "mask": [
+        0,
+        1,
+        5
+      ],
+      "tol": [
+        0.014,
+        0.013,
+        1000000000.0,
+        1000000000.0,
+        1000000000.0,
+        0.15707963267948966
+      ]
+    }
+  },
+  "tasks_reused_note": "task reader kind/mask unchanged from lab/config.example.json and from run 1's config.json; only the numeric per-component tolerance was replaced with a value derived from TRAIN-split achievable ICP accuracy (75th percentile of the estimator-convergence-stage absolute pose error across the 40 TRAIN episodes, rounded up to 1mm / 1deg grid -- see TOLERANCE_DECISION.md). Components a task's mask does not use keep the original 1e9 sentinel unchanged.",
+  "mode": "bonferroni_multicheckpoint",
+  "checkpoints": [
+    4,
+    8,
+    12,
+    15
+  ],
+  "observable_feature_vector_note": "unchanged 12-dim feature vector is still present in each stage (for schema/comparability); the decay predictor instead reads a separate per-stage 'decay' field (kappa, rho, degenerate, residual_axes, k, K) that lab/adapter_bop.py:export_episode_decay adds."
+}
