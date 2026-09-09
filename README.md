@@ -174,6 +174,13 @@ trajectory-conformal completion certificate
 
 All share the same generated TRAIN/CALIBRATION/TEST episodes and task readers. Test outcomes are not used for tuning. This remains numerical evidence, not a real-backend result.
 
+## Full formal reference
+
+[`theory/FORMALIZATION_v1.md`](theory/FORMALIZATION_v1.md) gives one numbered reference (C1–C26)
+for the whole mechanism: C1–C20 is exactly what this repository executes today; C21–C26 is a
+proposed, unvalidated active-perception extension (choosing REFINE/NEW VIEW/RESET, not just
+stopping) — read that document's status table before citing any part of it.
+
 ## Timing discipline
 
 Numerical experiments generate complete trajectories and can sum stage costs to a counterfactual endpoint. These values are now named **trajectory-prefix costs**.

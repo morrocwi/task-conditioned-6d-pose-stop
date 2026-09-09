@@ -11,6 +11,14 @@ reader never has to guess which equation is executable code and which is a targe
 hemispheric lateralization or any other biological mechanism; real neuroscience is far more complex
 than that metaphor and this document makes no claim about it.
 
+## Relation to the other notes in this folder
+
+`COVERAGE_TO_TASK_CERTIFICATE.md` states the C7–C9 statistical bridge in isolation;
+`TOLEDO_COMPLETION_ENVELOPE.md` ties the completion-envelope construction to existing Toledo
+equation-library anchors (e.g. `weld/M.01.v1`). This document is the single numbered reference for
+the whole mechanism end to end (C1–C26) and is the one to update first; the other two remain valid
+narrower notes and are not superseded, only subsumed for full-picture reading.
+
 ## Status at a glance
 
 | Range | Status | Where it lives in this repo |
