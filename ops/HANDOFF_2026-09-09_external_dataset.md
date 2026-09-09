@@ -358,3 +358,51 @@ overclaims, confirmed the new `DecayModel` branch in `predicted_log_error` is ge
 (re-ran run3's own invocation post-change and got a byte-identical result to what was already
 committed). Pushed to both `local` (Forgejo) and `origin` (GitHub) — no release/tag cut this
 cycle (no founder release request attached to this run).
+
+## Fifth cycle authorized, 2026-09-09: H3 (native retained-sensitivity model)
+Founder: "เราสร้างโมเดลมา แก้ปัญหาให้ certificate ทำงาน" (build the model, solve it so the
+certificate works) -- read as proceeding with H3 (PROP-NATIVE-01/02, the native no-T* model),
+since it is the only candidate that directly answers the founder's own redirect this session
+(question what error IS under our philosophy; build from Toledo's own roots). H1/H2 remain
+available candidates in GLOSA-PC-20260909-0005 if H3 also fails to certify.
+
+Known, accepted, tracked limitation for THIS cycle (per theory/CONTINUUM_AUDIT_20260909.md item 1):
+T_hat_k is still represented in SE(3), a continuum manifold -- H3 fixes the T* non-readout (no
+ground truth used anywhere, even offline) but does NOT yet fix the deeper SE(3)-representation
+continuum injection, which needs its own separate design pass. Proceeding anyway is a deliberate,
+disclosed scope decision, not an oversight.
+
+Implementation spec (from registry/proposals/native_retained_sensitivity.json, PROP-NATIVE-01/02):
+1. Delta_k := retained update between consecutive pose estimates (already computable, no T*).
+2. Reuse run 4's real H_k eigen-extraction (lab/decay_predictor.py or wherever it landed) to get
+   real eigenpairs (lambda_j, v_j) of the ICP normal-equations Hessian at each stage -- this part
+   of run 4 was NOT refuted (only the graph-diameter-based decay-rate use of it was); reuse the
+   eigenvalues/eigenvectors directly.
+3. Identify "data-justified-uncertain" directions: eigenvectors with small eigenvalue (near
+   whatever floor is available -- q_formal/M.07 is still only a citation, so use an empirical/
+   relative threshold, e.g. the smallest 1-2 eigenvalues, or a declared fraction of lambda_max,
+   predeclared before final test, not tuned on results).
+4. Perturbation magnitude along each such direction: proportional to 1/lambda_j, capped by a
+   predeclared bound (do not let a near-zero eigenvalue produce an unbounded perturbation -- fail
+   closed / HOLD if it does, matching this repo's own fail-closed culture).
+5. NEW decision rule: ACT iff the task verdict O_T(That_k) is unchanged under EVERY predeclared
+   perturbation along a data-justified-uncertain direction; otherwise CONTINUE/HOLD per budget.
+   This REPLACES the calibrated-completion-set machinery (C7-C10) for this cycle's own decision
+   path -- keep C7-C10 and the run1-4 code paths intact and reproducible, add this as a clearly
+   separate new path (e.g. lab/native_sensitivity.py), do not delete or modify prior work.
+6. No T* anywhere in the online decision. T* may be used ONLY afterward, as an external check on
+   whether ACT-licensed episodes actually passed the task and CONTINUE/HOLD episodes were honestly
+   uncertain -- exactly the same role T* already plays as an offline oracle in runs 1-4's own
+   evaluation, never as a calibration input.
+7. Predeclare the eigenvalue-threshold rule and perturbation-cap BEFORE opening final test (same
+   TRAIN/CAL/TEST discipline, frozen config in its own commit, same as runs 2-4).
+8. Run on the identical BOP-LMO data/split. Report honestly in
+   lab/results/real-bop-lmo-2026-09-09-run5/ following RESULT_TEMPLATE.md -- whatever the outcome.
+9. Update theory/FORMALIZATION_v1.md (this is the C1-C20/PROP-NATIVE material, a genuinely
+   different branch from C21-C26 -- place it correctly, cross-reference
+   docs/L_R_SPECTRAL_CEILING_AND_FLOOR.md and docs/NAVIER_STOKES_THROUGH_OUR_LENS.md's kappa-scaling
+   warning since this construction also uses H_k eigenvalues). Update
+   ~/ANSE.ASIA/glosa/projects/GLS-2026-005_pose-stop-conformal-diagnosis/DIAGNOSIS_HYPOTHESIS.md
+   and the HYPOTHESIS_CANDIDATES_20260909.md file with the outcome against H3.
+10. Novelty/positioning guardrails unchanged (never "first," never "we solve pose estimation").
+    Full test suite, leak scan, independent review before pushing to origin (mirror runs 2-4).
