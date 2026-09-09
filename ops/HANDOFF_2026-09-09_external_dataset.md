@@ -118,3 +118,11 @@ State this distinction explicitly in any results writeup — do not blur "real s
 and S_C>=S_E-delta all hold together with the unsafe-ACT/HOLD story, that is the founder's stated
 threshold for a strong ICRA/IROS/RA-L-shaped contribution (not necessarily CVPR, which wants a
 core vision/estimation contribution this project explicitly does not make).
+
+## Result received, review launched
+Real BOP-LMO run done (commit fd65d27, pushed to local only): genuine falsifying result — 0%
+certificate rate on all 3 tasks (calibrated envelope too wide for the reused tolerances), coverage
+87.5% (CI straddles 90% target). Full detail lab/results/real-bop-lmo-2026-09-09/RESULT.md.
+Ultracode review+release workflow launched: wf_934b7d58-e64. It will NOT push to origin or create
+a GitHub release itself — reads its report, then the chair does the actual public tag/push if
+ops/RELEASE_NOTES_v0.7_DRAFT.md says RELEASE READY: yes.
