@@ -20,6 +20,9 @@
 | IDM is faster than Dijkstra | Not supported |
 | Coverage-qualified task stopping reduces real RGB-D/GPU 6D pose latency | Open hypothesis |
 | Coverage-qualified task stopping is non-inferior on physical manipulation | Open hypothesis |
+| A real numpy+scipy ICP backend on real BOP LM-O RGB-D data can produce a real-sensor completion envelope via the shared `cqts/safety.py` split-conformal machinery | Executed real-sensor method (`lab/results/real-bop-lmo-2026-09-09/`); envelope was finite (not the +infinity fail-closed case) |
+| That real-sensor envelope is task-discriminative enough to yield `k_C < k_E` on real BOP LM-O data at the reused numerical-fixture tolerances | Refuted for this run: 0/40 test episodes for all three declared tasks (100% HOLD, `certificate_rate = 0.0`); see falsifier accounting in `lab/results/real-bop-lmo-2026-09-09/RESULT.md` |
+| Real-sensor coverage-qualified stopping is non-inferior to estimator-side stopping on real BOP LM-O data at this scope | Not supported: non-inferiority FAILS its predeclared 5% margin for all three tasks (lower confidence bound -13.2% / -13.2% / -8.8%) |
 | Selective stopping is universally robust to uncertainty undercoverage | Refuted as a universal claim by the stress fixture |
 | FoundationPose supports arbitrary coordinate-selective refinement unchanged | Not supported by current inspected interface |
 

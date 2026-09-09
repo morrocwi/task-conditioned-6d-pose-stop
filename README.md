@@ -78,8 +78,41 @@ Adversarial regression tests retain the specific small-n, NaN, and n=1 inference
 5. **Matched comparator study** — same-split, calibration-tuned alternatives on new test seeds (`experiments/matched_baselines.py`).
 6. **Reduced-configuration repeated diagnostic** — repeated TRAIN → CALIBRATION → TEST cycles under a smaller computational configuration (`experiments/replication_study.py`).
 7. **University lab harness** — backend-agnostic real-system interface (`lab/`).
+8. **Real-sensor ICP run (in-house, not independent)** — real BOP LM-O RGB-D data through a real numpy+scipy point-to-point ICP/Kabsch backend, via the `lab/` harness (`lab/results/real-bop-lmo-2026-09-09/`). This is a negative/falsifying result: see "Real-sensor evidence" below.
 
 The numerical research evidence uses generated point clouds. No camera, neural pose estimator, contact physics, or physical robot is silently implied by those results.
+
+## Real-sensor evidence (in-house, not independent lab validation)
+
+`lab/results/real-bop-lmo-2026-09-09/` runs the public `lab/` harness against real
+RGB-D data (BOP LineMOD-Occlusion, scene 000002, objects ape and driller) and a real
+in-repo numpy+scipy point-to-point ICP/Kabsch backend (`lab/bop_icp_backend.py`) —
+no neural pose model, no learned weights. Object segmentation used the dataset's own
+ground-truth `mask_visib` mask (this tests the refinement stage only, not detection),
+and the ICP initial pose came from a documented bounded random perturbation of ground
+truth (not a real coarse detector). This was executed **in-house, not by an
+independent laboratory** — it does not upgrade the evidence tier described in
+`CONTRIBUTING.md`'s "Evidence status" section.
+
+Result: on 40 held-out real-sensor test episodes at 15-iteration budget, the
+declared completion envelope, calibrated at `alpha=0.1` on real ICP residual/
+inlier/update features, **never once** collapsed tight enough to satisfy the
+task tolerances reused from the numerical fixture: `certificate_rate = 0.0` and
+`k_C < k_E` on 0/40 episodes for all three declared tasks. Held-out
+whole-trajectory coverage was 87.5% (Wilson 95% CI [73.9%, 94.5%]). Paired
+non-inferiority against estimator-side stopping FAILS its predeclared 5%
+margin for every task. No unsafe ACT occurred, but only because no ACT ever
+occurred (100% HOLD). Full accounting, exact numbers, and explicit limits
+(small n, reused untuned tolerances, no distribution-shift condition) are in
+[`lab/results/real-bop-lmo-2026-09-09/RESULT.md`](lab/results/real-bop-lmo-2026-09-09/RESULT.md).
+
+This is a genuine falsifying result under this repository's own falsifier list
+in `RESEARCH_QUESTION.md` ("`k_C < k_E` is rare or absent"; "the observable
+proxy cannot support a useful calibrated envelope") for this specific
+backend/task/tolerance/budget combination. It does not retire any existing
+OPEN/HOLD item in the Claim boundary section below — real RGB-D data was used,
+but no real neural pose backend, no independent lab, no GPU/online-policy
+timing, and no physical robot were involved.
 
 ## First frozen learned-shape final test
 
@@ -226,7 +259,8 @@ Supported at the current numerical level:
 - certificate correctness now fails closed at finite-sample and numerical boundary cases tested by adversarial regressions;
 - high coverage can still be operationally useless when the set is too wide;
 - the method can be compared reproducibly against matched calibration-tuned alternatives;
-- a public backend-agnostic harness exists for real-system falsification.
+- a public backend-agnostic harness exists for real-system falsification;
+- that harness has been exercised end-to-end on real RGB-D data (BOP LM-O) through a real (non-neural) ICP backend, producing a genuine falsifying result rather than a certificate (see "Real-sensor evidence" above) — this is in-house execution, not independent-lab validation, and does not by itself resolve any item in the OPEN/HOLD list below.
 
 Still OPEN / HOLD:
 

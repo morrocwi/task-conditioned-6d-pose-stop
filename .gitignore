@@ -5,3 +5,9 @@ venv/
 .DS_Store
 *.egg-info/
 .claude/
+
+# Raw BOP dataset archives/extracted files (large, externally licensed) -- not
+# redistributed in this repo. See lab/data/bop_lmo/README.md for the exact
+# download commands used to regenerate lab/data/bop_lmo_episodes/*.jsonl.
+lab/data/bop_lmo/
+artifacts/
