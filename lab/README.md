@@ -1,50 +1,55 @@
-# University Lab Protocol: Real-System Test
+# University Lab Protocol — Real Iterative 6D Pose Test
 
 This folder is the backend-agnostic entry point for testing **coverage-qualified downstream task stopping** on a real iterative 6D pose system.
 
-The single research question is:
+The primary event is
 
 \[
-k_C < k_E\;?
+k_C < k_E,
 \]
 
-- `k_C`: first refinement stage whose **calibrated completion envelope is entirely PASS** for the declared downstream task.
-- `k_E`: estimator-side stopping stage.
+where:
 
-A lab does **not** need to use FoundationPose. Any iterative 6D backend can be tested if it can expose a refinement trajectory.
+- `k_C` is the first stage whose calibrated completion envelope is entirely PASS for the declared task reader;
+- `k_E` is estimator-side stopping.
+
+If no certificate is reached within the refinement budget, `k_C` is **undefined / +infinity**. The executed policy may continue to the terminal budget and return HOLD; that terminal endpoint must not be reported as `k_C`.
+
+A lab does not need FoundationPose. Any iterative 6D backend can be tested if it exposes a refinement trajectory.
 
 ## What a lab needs
 
 1. A real iterative 6D pose backend.
-2. Independent pose ground truth for TRAIN/CALIBRATION/TEST trials (motion capture, calibrated fiducials, synthetic ground truth, or another predeclared independent reference).
+2. Independent pose ground truth for TRAIN/CALIBRATION/FINAL TEST trials: motion capture, calibrated fiducials, simulation ground truth, or another predeclared reference.
 3. A declared task-admissibility reader in 6D pose-error coordinates.
-4. Measured per-stage latency on the actual hardware.
+4. Online-observable features available before the continue/stop decision.
+5. A predeclared statistical plan.
+6. For a speed claim, direct paired timing of the actual stopped policies on the target hardware.
 
-Translation units are metres. Rotation units are radians.
+Translation units are metres. Rotation units are radians. The reference helper reports components of the **relative rotation vector**; these are not globally valid Euler roll/pitch/yaw angles.
 
-## Minimum workflow
-
-### 1. Freeze the experiment before final test
+## 1. Freeze the experiment before FINAL TEST
 
 Predeclare:
 
 - backend name/version/commit and model weights;
-- hardware;
-- object/task set;
-- observable features exported at each refinement stage;
+- hardware, software stack, synchronization method, warm-up policy;
+- object/task set and independent sampling unit;
+- observable feature vector;
 - nominal coverage `1-alpha`;
-- non-inferiority margin;
-- TRAIN, CALIBRATION, and FINAL TEST split rule;
+- task reader and tolerances;
 - estimator-side stopping rule;
-- task reader.
+- non-inferiority margin;
+- confidence level;
+- minimum FINAL TEST sample size / power rationale;
+- TRAIN, CALIBRATION, FINAL TEST split rule;
+- timing mode.
 
 Do not modify these after opening FINAL TEST without starting a new final-test lineage.
 
-### 2. Run the full refinement trajectory once per perception trial
+## 2. Export a full refinement trajectory
 
-For each episode, save every stage from the same run. Truncating a full trajectory at stage `k` is a valid counterfactual for perception latency only when later refinement does not change earlier stages.
-
-Export JSONL with this shape:
+For model fitting and counterfactual prefix analysis, export every stage from the same run:
 
 ```json
 {
@@ -65,11 +70,13 @@ Export JSONL with this shape:
 }
 ```
 
-`features` must contain **only quantities available online before deciding whether to continue**. Ground truth belongs only in `oracle`.
+`features` must contain only quantities available online before deciding whether to continue. Ground truth belongs only in `oracle`.
 
-### 3. Keep splits disjoint
+Truncating a fully generated trajectory at stage `k` provides a **trajectory-prefix cost estimate**. It is not, by itself, a measured speedup of an independently stopped online policy.
 
-Use three separate files:
+## 3. Keep TRAIN / CALIBRATION / FINAL TEST disjoint
+
+Use:
 
 ```text
 train.jsonl
@@ -77,15 +84,28 @@ calibration.jsonl
 test.jsonl
 ```
 
-The harness rejects duplicate `episode_id` values across splits.
+The evaluator rejects duplicate episode IDs across splits.
 
-TRAIN fits the observable error-shape model.
+- TRAIN fits the observable error-shape model.
+- CALIBRATION computes one whole-trajectory conformal score per independent episode.
+- FINAL TEST is evaluated only after model, calibration rule, task reader, and statistical plan are frozen.
 
-CALIBRATION computes one whole-trajectory conformal score per episode.
+For finite split conformal calibration, the public implementation uses the augmented order statistic. If the required rank is `n+1`, the quantile is `+infinity`, producing an uninformative envelope and fail-closed HOLD. It never silently substitutes the largest finite score.
 
-FINAL TEST is evaluated only after the model and calibration scale are frozen.
+## 4. Fail-closed certificate behavior
 
-### 4. Run the common evaluator
+The public evaluator treats corrupt certificate numerics conservatively:
+
+```text
+NaN / invalid model / malformed tolerance / overflow
+        -> unbounded certificate
+        -> no ACT
+        -> CONTINUE or HOLD
+```
+
+Invalid numerics must never collapse uncertainty to zero.
+
+## 5. Run the common evaluator
 
 ```bash
 python lab/run_real_system.py \
@@ -96,62 +116,88 @@ python lab/run_real_system.py \
   --out lab_results.json
 ```
 
-The evaluator reports:
-
-- whole-trajectory envelope coverage;
-- `k_C < k_E` rate;
-- paired `k_C-k_E` bootstrap interval;
-- task completion for certificate-stop and estimator-stop;
-- HOLD rate;
-- unsafe ACT rate;
-- unsafe ACT on covered episodes;
-- measured perception latency difference;
-- paired completion difference;
-- non-inferiority decision against the predeclared margin.
-
-## What counts as a successful real-backend test
-
-A paper should not define success using one number. Report the complete tuple:
+The default config uses:
 
 ```text
-coverage
-k_C < k_E
-paired stage difference
-paired latency difference
-completion difference
-HOLD
-unsafe ACT
+timing_mode = trajectory_prefix_estimate
 ```
 
-A useful result requires, at minimum:
+In this mode the evaluator reports paired prefix-cost differences but sets `latency_reduction_pass = null`. A speed claim is deliberately disabled.
 
-1. the calibrated set has empirically reported held-out coverage;
-2. `k_C` is earlier than `k_E` often enough to matter;
-3. measured perception latency is lower after gate overhead;
-4. completion is not worse than the predeclared margin;
-5. HOLD is operationally acceptable;
-6. unsafe ACT is reported, never hidden inside success-given-ACT.
+## 6. Statistical decision
 
-## Perception validation vs physical-robot validation
+The evaluator reports the paired completion difference and a conservative finite-sample non-inferiority lower confidence bound based on paired discordances (`candidate-only success` versus `comparator-only success`) with Clopper–Pearson bounds and Bonferroni allocation.
 
-This harness can establish a **real-backend perception result** when pose ground truth is measured on real sensor data.
+The decision requires the predeclared:
 
-It does **not** by itself establish physical manipulation non-inferiority.
+```text
+margin
+confidence level
+minimum test episodes
+independent sampling unit
+```
 
-For a physical-robot claim, run a separate execution study in which the actual robot executes the compared stopping policies under a predeclared randomized or blocked design. Record true physical task completion as an independent outcome.
+A single pair of equal outcomes cannot certify population non-inferiority. If the declared minimum sample size is not reached, the result remains insufficient.
 
-## Built-in task readers
+## 7. Real speed claims require online-policy timing
 
-The public evaluator currently supports:
+To claim latency reduction, use:
 
-- `box`: every selected pose-error coordinate must lie within its declared tolerance;
-- `l1`: the normalized sum of selected absolute pose errors must be at most one.
+```json
+"timing_mode": "online_policy_measured"
+```
 
-For tasks that cannot be represented this way, implement a custom reader rather than forcing the task into an invalid box.
+and export paired policy timing for each task/episode:
+
+```json
+"policy_timing_ms": {
+  "top_suction": {
+    "certificate_stop": 21.4,
+    "estimator_stop": 33.9
+  }
+}
+```
+
+Those measurements must come from actual separately executed policy loops and include all policy-specific work required for the decision, including feature extraction, certificate/gate computation, refinement updates, synchronization, and relevant device timing. Use warm-up and a predeclared paired timing design.
+
+Only `online_policy_measured` mode may emit a latency-reduction decision. Prefix replay remains descriptive.
+
+## 8. Required output
+
+Report the complete tuple:
+
+```text
+held-out trajectory coverage
+certificate rate
+k_C < k_E rate (all assigned episodes)
+k_C distribution conditional on certificate
+executed endpoint distribution
+paired prefix cost and/or measured policy time
+completion difference
+non-inferiority lower bound and decision
+HOLD
+unsafe ACT
+unsafe ACT on covered episodes
+```
+
+HOLD remains in the overall completion denominator.
+
+## 9. Real-backend vs physical-robot claims
+
+A real-sensor/backend experiment with independent pose ground truth can support a **real-backend perception result**.
+
+It does not establish physical manipulation non-inferiority. For that claim, execute the compared policies on the actual robot under a predeclared randomized or blocked design and measure physical task completion independently of the stopping gate.
+
+## 10. Built-in readers
+
+The evaluator currently supports:
+
+- `box`: every selected relative-pose error component must lie within tolerance;
+- `l1`: normalized selected absolute relative-pose errors must sum to at most one.
+
+If a task cannot be represented faithfully by these readers, implement and validate a custom reader rather than forcing it into an invalid box.
 
 ## Smoke test
-
-Anyone can verify the harness without hardware:
 
 ```bash
 python lab/make_example_data.py --out-dir artifacts/lab-example --n 40
@@ -163,8 +209,8 @@ python lab/run_real_system.py \
   --out artifacts/lab-example/results.json
 ```
 
-The example data are only a software smoke test. They are not research evidence.
+The generated example is only a software smoke test, not research evidence.
 
 ## Evidence boundary
 
-Passing this harness does not certify a robot, a pose estimator, or a safety claim. It standardizes the test so different laboratories can expose exactly where the proposal works, fails, or becomes too conservative.
+Passing the harness does not certify a robot, estimator, task reader, or safety property. It standardizes a falsifiable cross-lab test and forces insufficient calibration, invalid numerics, inadequate sample size, and missing online timing to remain explicit rather than being silently promoted into stronger claims.
