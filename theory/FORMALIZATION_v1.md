@@ -24,7 +24,13 @@ narrower notes and are not superseded, only subsumed for full-picture reading.
 | Range | Status | Where it lives in this repo |
 |---|---|---|
 | C1–C20 | **Implemented and executable** | `cqts/safety.py`, `lab/run_real_system.py`, `experiments/*.py` |
+| C20b | **Implemented and executable, a genuinely different decision path (no ground truth online), real BOP-LMO result: ACT-fires-unsafely** | `lab/native_sensitivity.py`, `lab/run_native_sensitivity.py`, `lab/results/real-bop-lmo-2026-09-09-run5/` |
 | C21–C26 | **Proposed, not implemented, not validated** | none — future work |
+
+Known, disclosed limitation shared by C1–C20b alike (`theory/CONTINUUM_AUDIT_20260909.md` item 1):
+`T_hat_k`/`T*` are represented in `SE(3)`, a continuum manifold. C20b removes `T*` from the online
+decision (its whole point) but does NOT fix that deeper continuum-representation injection — a
+separate, unattempted design pass.
 
 Do not describe C21–C26 as proved, tested, or existing in code anywhere in this repository's
 README, CLAIMS.md, or any release material. If a future run implements and validates them, this
@@ -367,6 +373,95 @@ is real, already-executed evidence (`experiments/matched_baselines.py`,
 `lab/results/real-bop-lmo-2026-09-09/RESULT.md` for the real-sensor outcome (a falsifying result at
 that run's specific tolerances/budget, reported honestly, not folded into this section as a
 success).
+
+### C20b — native retained-sensitivity ACT rule, an alternative to C7–C14 (implemented, no ground truth online, PROP-NATIVE-01/02)
+
+Placement note: this belongs here, adjacent to the implemented C1–C20 family, and NOT in Part III
+below — it is executed code with a real result on real data (`lab/native_sensitivity.py`,
+`lab/run_native_sensitivity.py`, `lab/results/real-bop-lmo-2026-09-09-run5/`), unlike C21–C26's
+proposed-only active-perception extension. It is a genuinely DIFFERENT decision path from C7–C14
+above, not an addition to them: it replaces the fitted error-shape model (C6/C6b), the calibrated
+completion envelope (C7–C10), and the coverage-qualified certificate (C11–C14) all at once, with a
+single ground-truth-free invariance test. Runs 1–4's own C7–C14 code paths are untouched and remain
+independently reproducible; this is a parallel path, per `ops/HANDOFF_2026-09-09_external_dataset.md`
+("Fifth cycle authorized, 2026-09-09: H3").
+
+**Motivation (PROP-NATIVE-01,
+`~/ANSE.ASIA/toledo/registry/proposals/native_retained_sensitivity.json`):** every construction
+above (C7–C14) is built around comparing an estimate against a (frozen, calibrated) notion of
+distance to the unobserved true pose `T*` — even C7–C9's split-conformal calibration only ever sees
+`T*` on the CALIBRATION split, never online, but it is still an ingredient of the calibration itself.
+`e_k := Log(That_k^{-1} T*)` is a distance to a non-readout under this workspace's own
+information-discrete-math discipline. PROP-NATIVE-01 proposes a retained-difference replacement that
+needs no `T*` anywhere, not even offline for calibration: `Delta_k := delta_R(That_k, That_{k-1})`,
+the directly observed update between consecutive pose readouts (already computable — this is exactly
+`stage.delta_t_norm`/`stage.delta_r_norm`, already an existing observable feature).
+
+**Decision rule (PROP-NATIVE-02):** at stage `k`, take the real ICP normal-equations Hessian
+`H_k = J^T J` (C6b's own diagnostic, `lab/bop_icp_backend.py::normal_equations_H`, reused unchanged)
+and its full eigendecomposition (`lab/decay_predictor.py::eigh_H`, additive to C6b's
+`kappa_rho_from_H`, same symmetrization/`eigh` routine family). Select the single smallest
+eigenvalue/eigenvector `(lambda_min, v_min)` — the direction the correspondence data itself
+constrains least. Perturb `T_hat_k` by `+-m*v_min`, `m = min(C/lambda_min, CAP)` (`C := CAP *
+lambda_ref`; `lambda_ref`, `CAP` both derived from TRAIN data only,
+`lab/derive_native_threshold_from_train.py`):
+
+```
+ACT_k  iff  fail_closed_task_pass(spec, 0) == fail_closed_task_pass(spec, |dev(T_hat_k, T_hat_k (+) m v_min)|)
+                                          == fail_closed_task_pass(spec, |dev(T_hat_k, T_hat_k (+) (-m) v_min)|)
+```
+
+where `dev` is `lab/se3.py::abs_pose_error_6d` (reused unchanged, the SAME convention C17/oracle
+scoring uses) applied to the SE(3) deviation between `T_hat_k` and each perturbed candidate, and
+`fail_closed_task_pass` is `cqts/safety.py`'s reader, reused unchanged. Since the unperturbed case is
+`T_hat_k` compared to itself (zero deviation), it trivially reads PASS for any task spec with
+strictly positive tolerances — this is disclosed explicitly, not hidden: the rule reduces exactly to
+"ACT iff both perturbed candidates also PASS." **No ground truth appears anywhere in this rule.**
+Oracle `abs_pose_error_6d` is read only afterward, by the evaluator, in exactly the C17-style
+offline-oracle role — checking whether ACT-licensed episodes were actually correct and CONTINUE/HOLD
+episodes were honestly uncertain — never as a calibration or decision input.
+
+**Honest floor caveat (this is the load-bearing limitation of the whole construction):** unlike C6b's
+refuted `H_k ~ L_R` (graph-Laplacian) identification, this construction does not need any graph
+structure or diameter for `H_k` at all — it only uses `H_k`'s own eigenvalues directly, which exist
+for any real symmetric matrix (PROP-NATIVE-02's stated advantage over PROP-DECAY-01). But it still
+has NO proven floor for "how small is too small an eigenvalue": `q_formal/M.07`'s diameter-based
+floor `lambda_2 >= 4/(nD)` was already shown (C6b, run4) not to apply to `H_k`'s own structure
+(no vertex/edge structure, no diameter), and remains unmechanized regardless (its own Coq attempt did
+not close — `~/ANSE.ASIA/toledo`). `CAP` here is therefore a declared/relative, TRAIN-derived bound
+(p75 of the existing local-dispersion-proxy norm), **not a bound resting on any proven floor**. This
+matters doubly because of `~/ANSE.ASIA/toledo/docs/NAVIER_STOKES_THROUGH_OUR_LENS.md`'s kappa-scaling
+honesty note (and `docs/L_R_SPECTRAL_CEILING_AND_FLOOR.md`'s own ceiling/floor pair): that note shows
+a condition-number-style bound `kappa <= (ceiling)/(floor)` is *not* uniform as a correspondence
+graph's size/diameter grows — it grows with graph size, by construction of the two proven/cited
+bounds themselves, not by assumption. This construction leans on the same family of spectral
+quantities (`H_k`'s own eigenvalues) without yet having an analogous proven scaling law for
+`lambda_min(H_k)` itself; the declared/relative `CAP` used here should be read as a placeholder for
+a real bound, not as one.
+
+**Result (`lab/results/real-bop-lmo-2026-09-09-run5/RESULT.md`): this is the first of five real-data
+cycles (this run and C6/C6b/C9b's runs 1–4) to license ACT at all, and it does so unsafely.** ACT
+fired on 100% of test episodes for all three declared tasks, always at `k=0` (the very first ICP
+stage, before any refinement), and was wrong (unsafe ACT) on 92.5–100% of those episodes (114/120
+task-episode pairs). Diagnosed cause: the perturbation magnitude this rule produces is bounded well
+below the real coarse-detector initial-pose error (`lab/bop_icp_backend.py::perturb_pose`: 15mm
+translation sigma, 5–20deg rotation), so the invariance test answers "is a tiny wobble around the
+CURRENT estimate tolerable" rather than "is the current estimate close to correct" — `H_k`'s spectral
+floor measures local geometric conditioning of the correspondence set, not the absolute scale of the
+estimate's own (unknown) residual error relative to ground truth. This is the exact empirical check
+PROP-NATIVE-02's own `honest_caveats` called for ("the relationship between 'small eigenvalue
+direction' and 'actual pose error along that direction' is itself an assumption ... must be checked
+empirically") — **and this run refutes that assumption**, at least at this trajectory stage, on this
+backend. Reported as a serious safety finding: runs 1–4 all failed SAFE (100% HOLD, never an unsafe
+ACT); this is the first construction in this line to fail UNSAFE instead.
+
+**What this does and does not establish:** does NOT establish that H3/PROP-NATIVE-01/02 is a viable
+stopping certificate on this backend, nor that PROP-NATIVE-01's broader native-error critique is
+wrong (only PROP-NATIVE-02's specific spectral-floor-only perturbation-magnitude construction was
+tested). DOES establish that `H_k`'s spectral floor alone, without pairing to an absolute
+residual/noise-scale observable (the way C6b's own decay predictor pairs `rho_k` with the observable
+residual proxy `|proxy_i|`), is not a safe proxy for pose-estimate uncertainty on this backend — a
+concrete, transferable lesson for any future construction reusing `H_k`'s eigenstructure.
 
 ---
 

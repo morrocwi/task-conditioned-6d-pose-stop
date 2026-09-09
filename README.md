@@ -82,6 +82,7 @@ Adversarial regression tests retain the specific small-n, NaN, and n=1 inference
 9. **Second real-sensor ICP run, tolerance-rederivation cycle (in-house, not independent)** — same backend/dataset/split as run 8, task tolerances re-derived from TRAIN-split achievable accuracy instead of reused from the numerical fixture (`lab/results/real-bop-lmo-2026-09-09-run2/`). Same negative/falsifying result, and it rules out "the tolerances were just too tight" as the explanation: see "Real-sensor evidence" below.
 10. **Third real-sensor ICP run, Bonferroni-corrected multi-checkpoint certificate (in-house, not independent)** — same backend/dataset/split/tolerances as run 9, changes only the certificate-construction method: a NEW code path (`lab/multicheckpoint.py`, `cqts/safety.py`'s Bonferroni functions) restricted to K'=4 predeclared checkpoint stages, calibrated independently at `alpha/K'` (Toledo proposal PROP-CONF-03; union bound machine-checked in `~/ANSE.ASIA/toledo/coq/canonical/PROP_CONF_03_union_bound.v`), instead of the existing joint whole-trajectory construction (unchanged, still used by runs 8-9). Refutes the specific falsifiable prediction it was designed to test: per-checkpoint quantiles came out LARGER, not smaller, than the joint quantile, and the certificate rate stayed at 0%. See "Real-sensor evidence" below.
 11. **Fourth real-sensor ICP run, closed-form condition-number decay predictor (in-house, not independent)** — same backend/dataset/split/tolerances as runs 9-10, changes only the error-scale predictor: replaces C6's fitted log-linear model with a closed-form decay law (`lab/decay_predictor.py`, Toledo proposal PROP-DECAY-01) derived from the ICP normal-equations Hessian H_k's own condition number, combined with the (unchanged) whole-trajectory calibration construction. Refutes both the proposed H_k~graph-Laplacian analogy (structurally, confirmed numerically) and the predicted calibration improvement (the new predictor's calibrated q is LARGER, not smaller, than either prior construction). See "Real-sensor evidence" below.
+12. **Fifth real-sensor cycle, native retained-sensitivity model, no ground truth anywhere online (in-house, not independent)** — a genuinely different decision mechanism (`lab/native_sensitivity.py`, Toledo proposals PROP-NATIVE-01/02): no fitted model, no calibrated completion set, no conformal quantile; ACT is licensed iff the task verdict is invariant under a bounded perturbation along H_k's own smallest eigenvalue direction. The first of five real-data cycles to license ACT at all — but ACT was WRONG (unsafe) on 92.5-100% of test episodes, always firing at the very first ICP stage. Reported as a serious safety finding, not a success. See "Real-sensor evidence" below.
 
 The numerical research evidence uses generated point clouds. No camera, neural pose estimator, contact physics, or physical robot is silently implied by those results.
 
@@ -211,6 +212,35 @@ both the original joint `q≈2.0008` (runs 1-2) and every run3 Bonferroni per-ch
 (2.085-2.200). Certificate rate remains exactly 0.0 for all three tasks (100% HOLD), the fourth
 cycle in a row to find this; held-out coverage is 95.0% (Wilson 83.5-98.6%). Full accounting in
 [`lab/results/real-bop-lmo-2026-09-09-run4/RESULT.md`](lab/results/real-bop-lmo-2026-09-09-run4/RESULT.md).
+
+### Fifth real-sensor cycle: native retained-sensitivity model, no ground truth anywhere online (PROP-NATIVE-01/02, H3)
+
+Founder authorization: after four calibration-side falsifications (runs 1-4, all `certificate_rate
+= 0.0`), question the underlying error definition itself instead of the calibration construction.
+Toledo proposals `PROP-NATIVE-01`/`PROP-NATIVE-02`
+(`~/ANSE.ASIA/toledo/registry/proposals/native_retained_sensitivity.json`) replace the classical
+pose-error definition `e_k := Log(That_k^-1 T*)` (a distance to an unobserved `T*`, a non-readout
+under this workspace's own information-discrete-math discipline) with a retained-sensitivity ACT
+rule that uses no ground truth anywhere online: perturb the current pose estimate `T_hat_k` along
+the ICP normal-equations Hessian `H_k`'s own single smallest eigenvalue direction (magnitude
+proportional to `1/lambda_min`, capped), and ACT iff the task reader's verdict is invariant across
+the unperturbed pose and both perturbed candidates. This is a genuinely different mechanism from
+runs 1-4 (`lab/native_sensitivity.py`): no fitted model, no calibrated completion set, no conformal
+quantile. `lambda_ref`/`CAP` are derived from TRAIN data only
+(`lab/derive_native_threshold_from_train.py`), frozen before FINAL TEST (`43954c09`).
+
+**Result: this is the first of five real-data cycles to license ACT at all — and it is unsafe.** ACT
+fired on 100% of test episodes for all three declared tasks, always at the very first ICP stage
+(`k=0`, before any refinement iteration), and was WRONG (unsafe ACT) on 92.5-100% of those episodes
+(114/120 task-episode pairs). Diagnosed cause: the perturbation magnitude this construction produces
+is bounded well below the real coarse-detector initial-pose error, so the invariance test answers "is
+a tiny wobble around the current estimate tolerable" rather than "is the current estimate close to
+correct" — `H_k`'s spectral floor measures local geometric conditioning, not the absolute scale of
+the estimate's own (unknown) residual error, and this run empirically refutes PROP-NATIVE-02's own
+disclosed open assumption that the two are safely related. This is reported as a serious safety
+finding, not a success — runs 1-4 all failed SAFE (100% HOLD); this is the first construction to
+fail UNSAFE. Full accounting in
+[`lab/results/real-bop-lmo-2026-09-09-run5/RESULT.md`](lab/results/real-bop-lmo-2026-09-09-run5/RESULT.md).
 
 ## First frozen learned-shape final test
 
