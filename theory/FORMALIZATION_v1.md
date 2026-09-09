@@ -1,0 +1,343 @@
+# Formalization v1 — Completion/Imagination and Verification/Decision
+
+Author: Yaoharee Lahtee, Open Civil Science Initiative. Recorded 2026-09-09.
+
+This document is a single, numbered formal reference (C1–C26) for the mechanism this repository
+implements, plus a clearly separated proposal for what it does not yet implement. It exists so a
+reader never has to guess which equation is executable code and which is a target for future work.
+
+**Non-claim, stated once, binding for the whole document:** the "Completion/Imagination" and
+"Verification/Decision" naming is an architecture metaphor. It is not a neuroscience claim about
+hemispheric lateralization or any other biological mechanism; real neuroscience is far more complex
+than that metaphor and this document makes no claim about it.
+
+## Status at a glance
+
+| Range | Status | Where it lives in this repo |
+|---|---|---|
+| C1–C20 | **Implemented and executable** | `cqts/safety.py`, `lab/run_real_system.py`, `experiments/*.py` |
+| C21–C26 | **Proposed, not implemented, not validated** | none — future work |
+
+Do not describe C21–C26 as proved, tested, or existing in code anywhere in this repository's
+README, CLAIMS.md, or any release material. If a future run implements and validates them, this
+document is the place to update, with its own evidence, not a place to retroactively claim they
+were already true.
+
+---
+
+## Part 0 — the readout the system actually has
+
+Let the true pose be `T* ∈ SE(3)` and the estimator's pose at refinement stage `k` be `T̂_k ∈
+SE(3)`. Define the local pose error through the Lie algebra:
+
+```
+e_k = Log(T̂_k^-1 T*) ∈ R^6,   e_k = [e_x, e_y, e_z, e_ωx, e_ωy, e_ωz]
+```
+
+The first three components are translation error; the last three are a local rotation-vector
+error, not globally-valid Euler roll/pitch/yaw (see `lab/README.md`'s own unit note).
+
+At deployment `T*` — and therefore `e_k` — is unknown. What the system actually has is an online,
+ground-truth-free observable readout:
+
+```
+r_k = R(T̂_k, I, Δ_k, ρ_k, ...)
+```
+
+e.g. residual, proposed update magnitude, an ensemble/dispersion proxy, the stage index. This is
+exactly `lab/ADAPTER_TEMPLATE.py`'s `observable_features(backend_stage)` contract: only
+ground-truth-free quantities are allowed here.
+
+---
+
+## Part I — Completion / Imagination (implemented, C1–C10)
+
+### C1 — the set of not-yet-excluded worlds
+
+```
+C_k = { z : z remains compatible with r_k }
+```
+
+The non-collapse this document insists on:
+
+```
+z ∈ C_k  =>  current evidence has not excluded z      (never: z ∈ C_k => z is true)
+
+possible ≠ true
+```
+
+### C2 — task identity instead of pose identity
+
+Let the downstream task reader be `O_T(z) ∈ {PASS, FAIL}`. Read every retained completion through
+it:
+
+```
+Y_{T,k} = { O_T(z) : z ∈ C_k }
+```
+
+### C3 — the three-state verdict
+
+```
+V_{T,k} = PASS  if Y_{T,k} = {PASS}
+          FAIL  if Y_{T,k} = {FAIL}
+          HOLD  if Y_{T,k} = {PASS, FAIL}
+```
+
+Central distinction: **pose unresolved does not imply task unresolved.** A task that is
+yaw-insensitive can be PASS under every retained completion even while yaw itself is still
+unresolved.
+
+### C4 — task ambiguity (imagination diameter)
+
+For a task-outcome distance `d_T`:
+
+```
+W_T(C_k) = sup_{z,z' ∈ C_k} d_T(O_T(z), O_T(z'))
+```
+
+For a binary task, `d_T(PASS,PASS)=d_T(FAIL,FAIL)=0`, `d_T(PASS,FAIL)=1`, so `W_T(C_k) ∈ {0,1}`.
+`W_T(C_k)=0` means every unresolved world is task-equivalent — not that pose has been fully
+resolved.
+
+### C5 — the calibration problem, named honestly
+
+An uncalibrated `C_k` can be too narrow: if the true error is 5 cm but the system "imagines" only
+±1 cm, every imagined world can pass while the real world sits outside the set entirely. This is
+exactly the correctness defect the repo's own adversarial review found and fixed
+(`evidence/ADVERSARIAL_REVIEW_RESPONSE.md`) — C6–C10 are the fix.
+
+### C6 — an observable error-scale predictor (learned on TRAIN only)
+
+```
+s_{k,i} = f_{θ,i}(r_k) > 0
+
+log s_{k,i} = β_i^T [1, log(p_{k,i}+ε_p), log(|Δ_{k,i}|+ε_Δ), log(ρ_k+ε_ρ), k/K]
+```
+
+`s_{k,i}` is a predicted error-scale shape, not a posterior: `s_{k,i} ≠ P(e_{k,i} | r_k)`.
+
+### C7 — whole-trajectory conformal nonconformity score (CALIBRATION split only)
+
+```
+A_j = max_{k≤K} max_{i≤6} [ log(|e_{j,k,i}| + δ_i) − log(s_{j,k,i}) ]
+```
+
+Maxing across the whole trajectory (not per-stage) is deliberate: the stopping stage is chosen
+adaptively later, so per-stage independence cannot be assumed.
+
+### C8 — the corrected split-conformal quantile (post-review)
+
+```
+r_α = ceil((n+1)(1-α))
+
+q_α = A_(r_α)          if r_α ≤ n
+q_α = +∞                if r_α = n+1
+```
+
+**The binding correction from the adversarial review**: `r_α` is never clamped back to `n`. When
+calibration data is too small for the requested level, `q_α = +∞`, which forces HOLD rather than
+issuing a falsely-narrow certificate. Implemented exactly as
+`cqts/safety.py::safe_split_conformal_quantile`; the fail-closed HOLD path is
+`cqts/safety.py::fail_closed_task_pass` together with `CertificateNumericsError`.
+
+### C9 — the calibrated envelope half-width
+
+```
+b_{k,i} = exp(log s_{k,i} + q_α) − δ_i
+```
+
+Implemented as `cqts/safety.py::safe_exp_error_bound`.
+
+### C10 — the calibrated completion envelope
+
+```
+Ĉ^cal_k = { e ∈ R^6 : |e_i| ≤ b_{k,i} for all i }
+```
+
+This is the executable form of "the set of pose errors that current evidence plus calibration
+still permits."
+
+---
+
+## Part II — Verification / Decision (implemented, C11–C20)
+
+### C11 — task-admissible region
+
+```
+A_T = { e : g_T(e) ≤ 0 }
+```
+
+e.g. `label_alignment`: `A = { e : |e_i| ≤ τ_i, ∀i }`. `keyed_insertion` needs a joint constraint,
+not independent per-axis thresholds, because small per-axis errors can still combine into a part
+that will not seat:
+
+```
+|e_x|/τ_x + |e_y|/τ_y + |e_ωz|/τ_ω ≤ 1
+```
+
+Implemented via `cqts/safety.py::validate_task_spec` / `fail_closed_task_pass` and the task
+definitions in `lab/config.example.json`.
+
+### C12 — the coverage-qualified certificate
+
+```
+ACT is licensed  <=>  Ĉ^cal_k ⊆ A_T   <=>   O_T(e) = PASS  for all e ∈ Ĉ^cal_k
+```
+
+### C13 — certificate hitting time
+
+```
+k_C = inf{ k : Ĉ^cal_k ⊆ A_T },   k_C = +∞ if no stage satisfies it
+```
+
+A terminal HOLD at budget `K` must never be relabelled as `k_C` — this is the exact corrected
+semantics from `README.md`'s "What changed after adversarial review."
+
+### C14 — the decision rule (this repository's current, shipped policy)
+
+```
+D_{T,k} = ACT       if Ĉ^cal_k ⊆ A_T
+          CONTINUE  if k < K and no certificate yet
+          HOLD      if k = K and no certificate yet
+```
+
+### C15 — connecting to estimator-side stopping
+
+```
+k_E = inf{ k : C_E(r_k) = STOP }        (the backend's own stopping rule)
+
+the event of interest:  k_C < k_E
+```
+
+`k_C < k_E` means the downstream task resolved before the estimator itself would call convergence
+— the computational opportunity this repository exists to test.
+
+### C16 — marginal coverage guarantee
+
+Under split-conformal exchangeability:
+
+```
+P( e*_k ∈ Ĉ^cal_k  for all k ≤ K ) ≥ 1 − α
+```
+
+This is **marginal coverage**, not `P(robot safe) ≥ 1-α` — do not conflate the two in any writeup.
+
+### C17 — from coverage to task correctness, by set inclusion (not confidence)
+
+If `e*_k ∈ Ĉ^cal_k` (coverage holds this episode) and the system ACTs because `Ĉ^cal_k ⊆ A_T`,
+then by plain set inclusion `e*_k ∈ A_T`, i.e.:
+
+```
+ACT ∧ coverage  =>  PASS_T
+```
+
+This is set-theoretic reasoning, not a confidence score — the repo's central methodological claim.
+
+### C18 — non-inferiority against estimator-side stopping (post-review statistics)
+
+The repo does not use a percentile bootstrap for this comparison (that was a real defect the
+adversarial review found). It uses paired binary discordance with a conservative, finite-sample
+Clopper–Pearson lower bound, requiring a predeclared margin, confidence level, minimum N, and
+sampling unit — implemented in `cqts/safety.py::paired_binary_noninferiority`
+(`clopper_pearson_lower`/`_upper`, `_binom_cdf`, `_binom_sf_ge`).
+
+### C19 — timing claims are structurally separated
+
+`trajectory_prefix_estimate` (descriptive/debugging only) is never sufficient for a latency claim.
+A latency PASS/FAIL requires `timing_mode = online_policy_measured`: two full, separately executed
+policies with feature/gate/update/synchronization overhead included — see `CONTRIBUTING.md`
+"Timing claims" and `experiments/real_backend_protocol.md`.
+
+### C20 — what is empirically demonstrated today (numerical, matched baselines)
+
+The matched-baseline numerical study already shows the qualitative shape of the claim: on
+`keyed_insertion`, the certificate matches estimator-default completion (95%) while moving unsafe-
+ACT mass (5% → 0% observed) into HOLD (0% → 5%), at a lower mean endpoint (13.100 → 11.025). This
+is real, already-executed evidence (`experiments/matched_baselines.py`,
+`lab/results/*`), on numerical/synthetic and now one real-sensor (BOP-LMO) run — see
+`lab/results/real-bop-lmo-2026-09-09/RESULT.md` for the real-sensor outcome (a falsifying result at
+that run's specific tolerances/budget, reported honestly, not folded into this section as a
+success).
+
+---
+
+## Part III — Proposed extension: active perception (NOT implemented, C21–C26)
+
+Everything below is a formal proposal for a future project phase. The objective functions are
+written down; the transition/action model they depend on is **not validated**, and no code in this
+repository implements C21–C26. Do not cite this section as evidence of anything beyond "the target
+exists on paper."
+
+### C21 — worst-case ambiguity after a perception action
+
+For a perception action `a` in a candidate action set `U = {REFINE_x, REFINE_y, REFINE_ω, NEW_VIEW,
+MOVE_CAMERA, RESET, ...}`, let `Φ_a(C_k)` be the set of possible completion sets after taking `a`:
+
+```
+W̄_T(a | C_k) = sup_{C' ∈ Φ_a(C_k)} W_T(C')
+```
+
+### C22 — ambiguity contraction
+
+```
+G_T(a | C_k) = W_T(C_k) − W̄_T(a | C_k)
+```
+
+### C23 — task-relevant information value per unit cost
+
+For a perception-action cost `c(a) > 0`:
+
+```
+J_T(a | C_k) = G_T(a | C_k) / c(a)
+```
+
+### C24 — the proposed action-selection rule
+
+```
+a*_k = argmax_{a ∈ U} J_T(a | C_k)
+```
+
+In plain language: if the system cannot yet ACT, do not refine indiscriminately — pick the
+perception action that removes the most task-relevant ignorance per unit cost.
+
+### C25 — the proposed full policy
+
+```
+π(r_k) = ACT     if Ĉ^cal_k ⊆ A_T
+         a*_k    if W_T(Ĉ^cal_k) > 0 and a worthwhile action exists
+         HOLD    otherwise
+```
+
+### C26 — the proposed training objective
+
+Not minimizing pose error alone (`min ‖e_k‖`), but a declared industrial trade-off:
+
+```
+min_π  E[ C_perception(π) + λ_F L_task + λ_U I_unsafe + λ_H I_HOLD ]
+```
+
+where the `λ` weights are a declared operating point (e.g. `λ_U ≫ λ_H` when an unsafe action is far
+costlier than one abstention) — HOLD is then an optimal industrial decision under a declared cost
+structure, not a default failure mode.
+
+---
+
+## The single sentence this whole document reduces to
+
+```
+Complete state knowledge ≠ sufficient knowledge for action.
+
+Do not resolve all uncertainty; resolve only the uncertainty that can still change the task outcome.
+```
+
+Architecture shape:
+
+```
+Observe -> Constrained Imagination -> Calibration -> Task Equivalence -> {ACT, REFINE, NEW VIEW, RESET, HOLD}
+```
+
+C1–C20 are the executed half of this diagram (Observe → Constrained Imagination → Calibration →
+Task Equivalence → {ACT, CONTINUE, HOLD}). C21–C26 (REFINE/NEW VIEW/RESET as a chosen, not fixed,
+action) are the proposed, unvalidated extension toward a general decision architecture under
+incomplete knowledge, for which iterative 6D pose refinement is the first candidate executable and
+falsifiable domain — not the final scope.
