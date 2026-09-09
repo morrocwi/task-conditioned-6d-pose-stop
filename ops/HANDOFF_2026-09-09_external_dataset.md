@@ -406,3 +406,27 @@ Implementation spec (from registry/proposals/native_retained_sensitivity.json, P
    and the HYPOTHESIS_CANDIDATES_20260909.md file with the outcome against H3.
 10. Novelty/positioning guardrails unchanged (never "first," never "we solve pose estimation").
     Full test suite, leak scan, independent review before pushing to origin (mirror runs 2-4).
+
+## Fifth cycle executed, 2026-09-09: H3 fired ACT for the first time -- unsafely
+
+Predeclaration commit `43954c09eedda7f3802adee6d83b559c836d19e6` (2026-09-09T16:03:50+07:00): froze
+`lambda_ref` (median TRAIN lambda_min(H_k)) and `CAP` (p75 of TRAIN's local-dispersion-proxy norm)
+via `lab/derive_native_threshold_from_train.py`, before `lab/run_native_sensitivity.py` was ever
+invoked against `test.jsonl`. Result commit `dcd3343` (pushed to `local` only so far).
+
+**This is the first of five real-data cycles to license ACT at all -- and it is unsafe.** ACT fired
+on 100% of test episodes for all three declared tasks, always at the very first ICP stage (`k=0`,
+before any refinement), and was WRONG on 92.5-100% of those episodes (114/120 task-episode pairs).
+Diagnosed cause: the perturbation magnitude this construction produces is bounded well below the
+real coarse-detector initial-pose error, so the invariance test answers whether a tiny wobble around
+the current estimate is tolerable, not whether the estimate itself is close to correct. Full detail:
+`lab/results/real-bop-lmo-2026-09-09-run5/RESULT.md`. `theory/FORMALIZATION_v1.md` (new C20b),
+`CLAIMS.md`, `README.md` updated. `~/ANSE.ASIA/glosa` (GLS-2026-005) and `~/ANSE.ASIA/toledo`
+(PROP-NATIVE-02 marked `refuted_unsafe`) updated in their own commits.
+
+Per this cycle's own elevated bar (an unsafe-ACT finding, not a routine refutation), an independent
+adversarial review (a materially separate agent pass, re-deriving the eigenvalue/perturbation math,
+not just re-running the pipeline) was launched before any push to origin. Test suite: 95/95 pass
+(81 pre-existing + 14 new in `tests/test_native_sensitivity.py`). Pushed to `local` (Forgejo) only;
+push to `origin` (GitHub) is held pending that review's verdict, matching runs 2-4's own discipline
+but with the higher bar this cycle's finding warrants.
