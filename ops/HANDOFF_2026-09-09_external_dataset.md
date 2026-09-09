@@ -430,3 +430,55 @@ not just re-running the pipeline) was launched before any push to origin. Test s
 (81 pre-existing + 14 new in `tests/test_native_sensitivity.py`). Pushed to `local` (Forgejo) only;
 push to `origin` (GitHub) is held pending that review's verdict, matching runs 2-4's own discipline
 but with the higher bar this cycle's finding warrants.
+
+## Run 6 authorization (2026-09-09, founder: "เอาเลยรอบที่หก")
+
+Run 5 (H3, PROP-NATIVE-01/02) is closed: reviewed PASS, pushed to origin+local, result is
+`refuted_unsafe` — ACT fired at k=0 on 100% of test episodes, wrong 92.5-100% of the time. Root
+cause: the perturbation magnitude (bounded by TRAIN CAP=0.0327) is far smaller than the real
+coarse-detector initial-pose error, so the single-instant invariance check answers "is a tiny
+wobble tolerable" not "is this estimate correct."
+
+**Task now: implement and test `PROP-NATIVE-03`** (already registered in
+`~/ANSE.ASIA/toledo/registry/proposals/native_retained_sensitivity.json`, status `unverified`):
+
+```
+M_k := M_{k-1} + 1[task verdict invariant under every imagined perturbation at stage k],  M_0:=0
+ACT <=> M_k >= theta   (a predeclared persistence threshold)
+```
+
+This does NOT fix PROP-NATIVE-02's diagnosed root cause (perturbation magnitude too small) by
+itself -- a streak of "passes a too-easy check" is still a streak of a too-easy check. Two honest
+paths, pick or combine as the implementer judges best and DISCLOSE the choice:
+(a) implement M_k exactly as registered, on top of the existing (too-lenient) PROP-NATIVE-02
+    perturbation rule, to test whether persistence alone recovers safety even with a weak
+    single-instant check -- likely still unsafe, but a clean, disclosed, real falsification if so;
+(b) also revise the perturbation magnitude rule (e.g. drop the TRAIN-derived CAP, or add a residual/
+    noise-scale term as flagged in PROP-NATIVE-02's own honest_caveats and in
+    `docs/L_R_SPECTRAL_CEILING_AND_FLOOR.md`) alongside adding M_k, and report both changes
+    separately in the result so it's clear which change (if either) fixed the unsafe-ACT problem.
+Prefer (a) first if time allows -- it isolates the memory variable cleanly -- then (b) as a
+follow-up if (a) is still unsafe.
+
+Standing discipline for this repo (unchanged from runs 1-5, do not relitigate):
+- Toledo-first: PROP-NATIVE-03 is already registered before use.
+- Predeclare config (eigenvalue rule, magnitude rule, theta) via a frozen git commit BEFORE running
+  against `test.jsonl` -- this was the disclosed process gap fixed after run 1/2, do not regress it.
+- Reuse `cqts/safety.py` unchanged; reuse `lab/bop_icp_backend.py`'s real ICP/Kabsch backend; reuse
+  run 4/5's `eigh_H`-family Hessian-eigenpair code, do not reimplement.
+- Same BOP-LMO split as prior runs (same train/test manifest).
+- Independent review before any push to `origin` (GitHub); push to `local` (Forgejo) freely.
+  Given run 5 was unsafe, keep the SAME elevated review bar for run 6's result, whatever it is.
+- Update `theory/FORMALIZATION_v1.md` (new C-numbered clause), `CLAIMS.md`, `README.md` as needed.
+- Update glosa's `~/ANSE.ASIA/glosa/projects/GLS-2026-005_pose-stop-conformal-diagnosis/
+  DIAGNOSIS_HYPOTHESIS.md` and `HYPOTHESIS_CANDIDATES_20260909.md`.
+- Update Toledo's `native_retained_sensitivity.json` PROP-NATIVE-03 status field with the real
+  empirical result (verified/refuted/refuted_unsafe), same as PROP-NATIVE-02 was updated after run 5.
+- Full test suite must pass; report the exact new+total count.
+- No AI/vendor attribution in commits beyond the session's current standing instruction.
+- Write results to `lab/results/real-bop-lmo-2026-09-09-run6/` (RESULT.md, RATIONALE.md, config.json,
+  same shape as run5's directory).
+
+Report back: predeclared rule, results table (ACT rate / mean k / completion / unsafe-ACT rate /
+non-inferiority per task, same shape as run5's table), root-cause diagnosis if still unsafe,
+independent review verdict, test count, push status.
