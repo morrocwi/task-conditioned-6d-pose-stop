@@ -58,3 +58,25 @@ Report exactly what blocked it (download too large/slow, missing ground-truth fo
 object mesh, correspondence step degenerate, etc.) rather than fabricating a result. A partial,
 honestly-reported attempt is worth more here than a fabricated PASS — this repo's own culture
 already survived one adversarial review by refusing to do that.
+
+## Novelty-claim constraint (founder relayed, 2026-09-09, from a literature-check pass)
+
+Literature check through 2026 found: conformal 6D-pose uncertainty sets (Yang & Pavone 2023; Wang
+et al. ICCV 2025), task-aware/task-conditioned perception (established 2026 robotics work),
+conformal-guided early stopping in general ML (established), and even 2026 robotics work using
+conformal calibration to gate manipulation-policy rollout termination (established) are ALL
+already prior art. Do NOT claim any of those individually as novel, and NEVER use the word
+"first" — a literature search alone cannot establish universal priority.
+
+The one candidate the founder approved for the paper, exact wording, do not paraphrase looser:
+
+> "We study a specific composition not established by the prior work reviewed here: using a
+> trajectory-calibrated 6D pose-completion set itself as a downstream task stopping certificate
+> for iterative pose refinement, with ACT licensed only when the entire retained set lies inside
+> the declared task-admissible region."
+
+If this run's results/README/CLAIMS.md touch a novelty statement, use this sentence (or a strict
+subset of it), never a broader claim. The matched-baseline framing already in the repo (scalar
+threshold can stop earlier while still producing unsafe ACT; the certificate trades a small HOLD
+rate for lower unsafe-ACT) is exactly the kind of narrow, evidence-backed distinction the founder
+wants kept, not "we are faster."
