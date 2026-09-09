@@ -482,3 +482,45 @@ Standing discipline for this repo (unchanged from runs 1-5, do not relitigate):
 Report back: predeclared rule, results table (ACT rate / mean k / completion / unsafe-ACT rate /
 non-inferiority per task, same shape as run5's table), root-cause diagnosis if still unsafe,
 independent review verdict, test count, push status.
+
+## Sixth cycle executed, 2026-09-09: PROP-NATIVE-03 refuted (degenerates to a fixed-delay knob)
+
+Predeclaration commit `efa52b88af63cc172e9d98fbaee8d74684d0e72a` (2026-09-09T16:49:07+07:00): froze
+`lab/native_persistence.py` (resetting streak `M_k`), `lab/run_native_persistence.py` (evaluator,
+variants a/b), `lab/derive_native_persistence_from_train.py`, `tests/test_native_persistence.py`,
+and `lab/results/real-bop-lmo-2026-09-09-run6/{config.json,split_manifest.json,RATIONALE.md,
+native_persistence_threshold_derivation.json}`, before `lab/run_native_persistence.py` was ever
+invoked against `test.jsonl`. `theta=4` (reused from run3's own frozen Bonferroni checkpoint set,
+not a new invented constant); `residual_scale_ref`/`residual_cap_multiplier` for the disclosed
+variant (b) both derived from TRAIN only, no ground truth.
+
+Path chosen: implemented BOTH (a) theta-gate only (isolates the memory variable) and (b) also a
+residual-RMSE-scaled perturbation magnitude, run and reported separately, per the handoff's own
+"prefer (a) first ... then (b) as a follow-up" guidance — both were run in the same cycle since a
+TRAIN-only diagnostic (below) predicted (a) alone would not be informative on its own.
+
+**Honest prediction stated before opening test.jsonl:** run5's single-instant invariance check
+evaluates True at every one of 640 TRAIN stage readings (40 episodes x 16 stages, all 3 tasks) —
+no toggling exists on TRAIN for a streak counter to filter. This predicted variant (a) would reduce
+to a deterministic fixed-stage rule, not a genuine noise filter.
+
+**Result: the prediction is confirmed; both variants are refuted, still unsafe.** ACT fires
+deterministically at the fixed stage `k=theta-1=3` on 100% of test episodes, all three tasks, in
+both variants (byte-identical ACT/HOLD/completion/unsafe outcomes — variant (b)'s multiplier never
+changed a single decision). Unsafe-ACT rate: 80.0% (top_suction), 80.0% (label_alignment), 87.5%
+(keyed_insertion) — 99/120 task-episode pairs, down from run5's 92.5-100% only because of the 3
+extra ICP iterations run before commit, not because persistence filtered anything (the underlying
+check never toggles on this data). Root cause for variant (b): the residual-scale multiplier only
+reached ~1.15-1.8x (capped at 2x), roughly two orders of magnitude too small relative to the real
+coarse-detector initial-pose error (15mm translation sigma, 5-20deg rotation) to matter. Full
+detail: `lab/results/real-bop-lmo-2026-09-09-run6/RESULT.md`. `theory/FORMALIZATION_v1.md` (new
+C20c), `CLAIMS.md`, `README.md` updated. `~/ANSE.ASIA/glosa` (GLS-2026-005) and `~/ANSE.ASIA/toledo`
+(PROP-NATIVE-03 marked `refuted`, not `refuted_unsafe` — the mechanism did not make the unsafe
+outcome WORSE, it modestly improved it via extra iterations while still failing to establish
+safety) updated in their own commits.
+
+Test suite: 104/104 pass (95 pre-existing + 9 new in `tests/test_native_persistence.py`).
+Independent review (a materially separate agent pass) launched before any push to `origin`, same
+elevated bar as run5 since this is another unsafe-ACT-adjacent finding (still 80-87.5% unsafe when
+it fires). Pushed to `local` (Forgejo) freely per standing discipline; `origin` push held pending
+that review's verdict.

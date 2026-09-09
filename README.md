@@ -83,6 +83,7 @@ Adversarial regression tests retain the specific small-n, NaN, and n=1 inference
 10. **Third real-sensor ICP run, Bonferroni-corrected multi-checkpoint certificate (in-house, not independent)** — same backend/dataset/split/tolerances as run 9, changes only the certificate-construction method: a NEW code path (`lab/multicheckpoint.py`, `cqts/safety.py`'s Bonferroni functions) restricted to K'=4 predeclared checkpoint stages, calibrated independently at `alpha/K'` (Toledo proposal PROP-CONF-03; union bound machine-checked in `~/ANSE.ASIA/toledo/coq/canonical/PROP_CONF_03_union_bound.v`), instead of the existing joint whole-trajectory construction (unchanged, still used by runs 8-9). Refutes the specific falsifiable prediction it was designed to test: per-checkpoint quantiles came out LARGER, not smaller, than the joint quantile, and the certificate rate stayed at 0%. See "Real-sensor evidence" below.
 11. **Fourth real-sensor ICP run, closed-form condition-number decay predictor (in-house, not independent)** — same backend/dataset/split/tolerances as runs 9-10, changes only the error-scale predictor: replaces C6's fitted log-linear model with a closed-form decay law (`lab/decay_predictor.py`, Toledo proposal PROP-DECAY-01) derived from the ICP normal-equations Hessian H_k's own condition number, combined with the (unchanged) whole-trajectory calibration construction. Refutes both the proposed H_k~graph-Laplacian analogy (structurally, confirmed numerically) and the predicted calibration improvement (the new predictor's calibrated q is LARGER, not smaller, than either prior construction). See "Real-sensor evidence" below.
 12. **Fifth real-sensor cycle, native retained-sensitivity model, no ground truth anywhere online (in-house, not independent)** — a genuinely different decision mechanism (`lab/native_sensitivity.py`, Toledo proposals PROP-NATIVE-01/02): no fitted model, no calibrated completion set, no conformal quantile; ACT is licensed iff the task verdict is invariant under a bounded perturbation along H_k's own smallest eigenvalue direction. The first of five real-data cycles to license ACT at all — but ACT was WRONG (unsafe) on 92.5-100% of test episodes, always firing at the very first ICP stage. Reported as a serious safety finding, not a success. See "Real-sensor evidence" below.
+13. **Sixth real-sensor cycle, memory/persistence accumulator (in-house, not independent)** — `lab/native_persistence.py`, Toledo proposal PROP-NATIVE-03: gates run5's unmodified single-instant check behind a resetting streak `M_k>=theta` (`theta=4`), plus a disclosed residual-scaled-magnitude variant. Refuted: the underlying single-instant check is near-constant across stages on both TRAIN and TEST, so the streak degenerates into a fixed-delay knob (ACT deterministically at `k=3` on 100% of test episodes, unsafe on 80.0-87.5% of them) rather than a genuine noise filter; the residual-scaled variant produced byte-identical outcomes because its dynamic range is far too small to matter. See "Real-sensor evidence" below.
 
 The numerical research evidence uses generated point clouds. No camera, neural pose estimator, contact physics, or physical robot is silently implied by those results.
 
@@ -241,6 +242,29 @@ disclosed open assumption that the two are safely related. This is reported as a
 finding, not a success — runs 1-4 all failed SAFE (100% HOLD); this is the first construction to
 fail UNSAFE. Full accounting in
 [`lab/results/real-bop-lmo-2026-09-09-run5/RESULT.md`](lab/results/real-bop-lmo-2026-09-09-run5/RESULT.md).
+
+### Sixth real-sensor cycle: memory/persistence accumulator (PROP-NATIVE-03)
+
+Founder authorization: run5's unsafe-ACT finding (PROP-NATIVE-02) motivated testing whether a
+memory/persistence requirement recovers safety. Toledo proposal `PROP-NATIVE-03`
+(`~/ANSE.ASIA/toledo/registry/proposals/native_retained_sensitivity.json`) wraps run5's unmodified
+single-instant invariance check in a resetting streak accumulator `M_k` (`M_k=M_{k-1}+1` when the
+check passes, `0` otherwise), gating `ACT <=> M_k >= theta` (`theta=4`, predeclared, reused from
+run3's own frozen Bonferroni checkpoint set). Two variants were run: (a) theta-gate only; (b) also
+scales the perturbation magnitude by the current observable ICP residual RMSE, addressing run5's
+own diagnosed root cause directly.
+
+**A TRAIN-only diagnostic, computed and disclosed before test.jsonl was opened, predicted the
+outcome:** the single-instant check evaluates True at every one of 640 TRAIN stage readings for
+all three tasks — there is no toggling for a streak counter to filter. **Result: as predicted, both
+variants are refuted.** ACT fires deterministically at the fixed stage `k=theta-1=3` on 100% of test
+episodes for all three tasks in both variants (byte-identical outcomes), unsafe on 80.0-87.5% of
+them (99/120 task-episode pairs) — a modest drop from run5's 92.5-100%, attributable only to the 3
+extra ICP iterations run before committing, not to any noise-filtering property of the persistence
+mechanism. Variant (b)'s residual-scale multiplier reached only ~1.15-1.8x at a cap of 2x, roughly
+two orders of magnitude too small relative to the real coarse-detector error scale to move the
+result. Full accounting in
+[`lab/results/real-bop-lmo-2026-09-09-run6/RESULT.md`](lab/results/real-bop-lmo-2026-09-09-run6/RESULT.md).
 
 ## First frozen learned-shape final test
 

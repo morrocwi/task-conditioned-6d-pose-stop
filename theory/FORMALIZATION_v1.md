@@ -25,11 +25,12 @@ narrower notes and are not superseded, only subsumed for full-picture reading.
 |---|---|---|
 | C1–C20 | **Implemented and executable** | `cqts/safety.py`, `lab/run_real_system.py`, `experiments/*.py` |
 | C20b | **Implemented and executable, a genuinely different decision path (no ground truth online), real BOP-LMO result: ACT-fires-unsafely** | `lab/native_sensitivity.py`, `lab/run_native_sensitivity.py`, `lab/results/real-bop-lmo-2026-09-09-run5/` |
+| C20c | **Implemented and executable, memory/persistence layer on top of C20b, real BOP-LMO result: refuted (degenerates to a fixed-delay knob)** | `lab/native_persistence.py`, `lab/run_native_persistence.py`, `lab/results/real-bop-lmo-2026-09-09-run6/` |
 | C21–C26 | **Proposed, not implemented, not validated** | none — future work |
 
-Known, disclosed limitation shared by C1–C20b alike (`theory/CONTINUUM_AUDIT_20260909.md` item 1):
-`T_hat_k`/`T*` are represented in `SE(3)`, a continuum manifold. C20b removes `T*` from the online
-decision (its whole point) but does NOT fix that deeper continuum-representation injection — a
+Known, disclosed limitation shared by C1–C20c alike (`theory/CONTINUUM_AUDIT_20260909.md` item 1):
+`T_hat_k`/`T*` are represented in `SE(3)`, a continuum manifold. C20b/C20c remove `T*` from the
+online decision (its whole point) but do NOT fix that deeper continuum-representation injection — a
 separate, unattempted design pass.
 
 Do not describe C21–C26 as proved, tested, or existing in code anywhere in this repository's
@@ -462,6 +463,74 @@ tested). DOES establish that `H_k`'s spectral floor alone, without pairing to an
 residual/noise-scale observable (the way C6b's own decay predictor pairs `rho_k` with the observable
 residual proxy `|proxy_i|`), is not a safe proxy for pose-estimate uncertainty on this backend — a
 concrete, transferable lesson for any future construction reusing `H_k`'s eigenstructure.
+
+### C20c — memory/persistence accumulator on top of C20b (implemented, PROP-NATIVE-03, refuted)
+
+Placement note: same status as C20b — executed code, real result on real data
+(`lab/native_persistence.py`, `lab/run_native_persistence.py`,
+`lab/results/real-bop-lmo-2026-09-09-run6/`). C20c does not replace C20b's per-stage invariance
+check; it wraps it in a memory/persistence gate, per
+`ops/HANDOFF_2026-09-09_external_dataset.md` ("Run 6 authorization"), Toledo proposal
+`PROP-NATIVE-03`. C20b's own code path and result are untouched and remain independently
+reproducible.
+
+**Motivation:** C20b's ACT rule fires from a single passing instant. Toledo's own registered
+statement for PROP-NATIVE-03 proposes gating ACT behind a run of consecutive passing instants
+instead — a resetting streak accumulator — on the theory (founder framing, 2026-09-09: "มนุษย์
+สมองส่วนจินตนาการและเหตุผล เชื่อมกับความจำ ทำงานพร้อมกันและตัดสินใจ") that imagination-plus-reason
+connects through memory before deciding, translated here as: don't act on a single passing check,
+act only once the check has held for `theta` consecutive stages.
+
+**Decision rule (PROP-NATIVE-03), as implemented (a disclosed interpretation choice — the
+registered LaTeX is a non-resetting running sum, but Toledo's own `note_ascii` for the same entry
+calls it "a streak count of consecutive stages", which is the resetting reading actually used):**
+
+```
+M_k = M_{k-1} + 1   if C20b's per-stage invariance check passes at stage k
+M_k = 0             otherwise,          M_0 := 0
+ACT_k  iff  M_k >= theta
+```
+
+`theta = 4` (predeclared, reused from run3's own frozen Bonferroni checkpoint set `{4,8,12,15}`
+rather than a newly invented constant). Two variants were run: (a) `theta`-gate only, C20b's
+perturbation rule reused byte-identical; (b) additionally scales the perturbation magnitude by
+`max(1, residual_rmse_k / residual_scale_ref)` (capped at `2x` C20b's own `CAP`), using the
+online-observable ICP correspondence residual RMSE — a direct, disclosed attempt to address C20b's
+own diagnosed root cause (no absolute-residual-scale term in the perturbation magnitude).
+
+**Honest TRAIN-only diagnostic, disclosed before FINAL TEST was opened:** C20b's per-stage
+invariance check evaluates True at every one of 640 TRAIN stage readings (40 episodes x 16 stages),
+for all three tasks — there is no toggling on TRAIN for a streak counter to filter. This predicted,
+before `test.jsonl` was read for this cycle, that variant (a) would degenerate into a fixed-delay
+rule (`M_k` deterministically `k+1`), not a genuine noise filter.
+
+**Result (`lab/results/real-bop-lmo-2026-09-09-run6/RESULT.md`): the prediction is confirmed, and
+both variants are refuted.** ACT fires deterministically at `k=theta-1=3` on 100% of test episodes
+for all three tasks, in both variants (byte-identical outcomes — variant (b)'s residual-scale
+multiplier never changed a single decision). Unsafe-ACT rate: 80.0% (top_suction), 80.0%
+(label_alignment), 87.5% (keyed_insertion) — 99/120 task-episode pairs, a modest drop from C20b's
+92.5-100% attributable only to the 3 extra ICP iterations run before commit, not to any
+noise-filtering property of the memory mechanism (C20b's own check never toggles on this
+data/backend, so there is nothing for persistence to filter). Variant (b)'s residual-scale
+multiplier reached only ~1.15-1.8x against a 2x cap, roughly two orders of magnitude too small
+relative to the gap between the perturbation cap and the real coarse-detector initial-pose error
+(15mm translation sigma, 5-20deg rotation) to move the result.
+
+**What this does and does not establish:** does NOT establish that memory/persistence
+constructions are useless for this problem class in general — only that adding a streak gate on
+top of a NON-NOISY (near-constant) single-instant signal cannot do anything but act as a
+fixed-delay knob, and that the one residual-scaling variant tried here has far too little dynamic
+range to matter. DOES establish, on a second independently-designed construction (after C20b's own
+spectral-floor finding), that neither `H_k`'s eigenstructure nor the ICP correspondence residual
+RMSE — the two observable quantities exposed by this backend to date — carries the ABSOLUTE scale
+of the coarse-detector's real initial-pose error; both are LOCAL statistics about the current
+correspondence set's conditioning/fit quality. A future construction along this line needs either
+a genuinely large-dynamic-range observable tied to absolute error scale, or a different framing
+that reasons about the coarse initial estimate's own error distribution directly rather than
+perturbing around the current refined estimate.
+
+Same shared continuum-representation caveat as C20b (`SE(3)` manifold, `theory/CONTINUUM_
+AUDIT_20260909.md` item 1) — not fixed here either.
 
 ---
 

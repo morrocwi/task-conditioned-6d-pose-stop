@@ -1,0 +1,188 @@
+{
+  "schema_version": 2,
+  "claim": "native retained-sensitivity ACT/CONTINUE/HOLD stopping gated by a resetting persistence streak M_k>=theta (PROP-NATIVE-03) -- NO ground truth is used in the online decision anywhere; variant=b",
+  "units": {
+    "translation": "metres",
+    "rotation": "radians",
+    "time": "milliseconds"
+  },
+  "protocol": {
+    "mode": "native_persistence",
+    "variant": "b",
+    "decision_rule": "M_k = M_{k-1}+1 if PROP-NATIVE-02's single-instant invariance check passes at stage k, else M_k = 0 (resetting streak, disclosed interpretation of the registered accumulator -- see lab/native_persistence.py docstring); ACT iff M_k >= theta; variant b ALSO scales the perturbation magnitude by max(1, residual_rmse_k/residual_scale_ref), capped at residual_cap_multiplier*CAP",
+    "theta": 4,
+    "lambda_ref_train_derived": 0.33927484832749355,
+    "cap": 0.03274911721483188,
+    "residual_scale_ref": 0.018320411722306557,
+    "residual_cap_multiplier": 2.0,
+    "train_episodes": 40,
+    "calibration_episodes": 40,
+    "test_episodes": 40,
+    "inference": {
+      "margin": 0.05,
+      "confidence_level": 0.95,
+      "minimum_test_episodes": 30
+    },
+    "reference": "PROP-NATIVE-03, ~/ANSE.ASIA/toledo/registry/proposals/native_retained_sensitivity.json"
+  },
+  "evaluation": {
+    "episodes": 40,
+    "tasks": {
+      "top_suction": {
+        "act_hitting_time": {
+          "act_rate": 1.0,
+          "mean_k_given_act": 3.0,
+          "act_before_estimator_rate_all_episodes": 1.0,
+          "act_before_estimator_rate_given_act": 1.0
+        },
+        "executed_native_persistence_policy": {
+          "mean_endpoint_k": 3.0,
+          "completion_rate": 0.2,
+          "hold_rate": 0.0,
+          "unsafe_act_rate": 0.8,
+          "mean_trajectory_prefix_ms": 24.69979885208886
+        },
+        "estimator_stop": {
+          "mean_k": 14.95,
+          "completion_rate": 0.325,
+          "mean_trajectory_prefix_ms": 98.3041191851953
+        },
+        "paired_endpoint_k_difference": {
+          "mean": -11.95,
+          "bootstrap95": [
+            -12.0,
+            -11.85
+          ]
+        },
+        "paired_prefix_perception_ms_difference": {
+          "mean": -73.60432033310644,
+          "bootstrap95": [
+            -74.1683849166293,
+            -72.9012944499118
+          ]
+        },
+        "noninferiority": {
+          "method": "paired_discordance_bonferroni_clopper_pearson_lower_bound",
+          "confidence_level": 0.95,
+          "n": 40,
+          "minimum_n": 30,
+          "gains_candidate_only": 4,
+          "losses_comparator_only": 9,
+          "paired_difference": -0.125,
+          "lower_confidence_bound": -0.3565862620092027,
+          "margin": 0.05,
+          "sufficient_sample_for_declared_plan": true,
+          "noninferiority_pass": false
+        },
+        "unsafe_act_episode_count": 32,
+        "degenerate_h_k_stage_rate": 0.0
+      },
+      "label_alignment": {
+        "act_hitting_time": {
+          "act_rate": 1.0,
+          "mean_k_given_act": 3.0,
+          "act_before_estimator_rate_all_episodes": 1.0,
+          "act_before_estimator_rate_given_act": 1.0
+        },
+        "executed_native_persistence_policy": {
+          "mean_endpoint_k": 3.0,
+          "completion_rate": 0.2,
+          "hold_rate": 0.0,
+          "unsafe_act_rate": 0.8,
+          "mean_trajectory_prefix_ms": 24.69979885208886
+        },
+        "estimator_stop": {
+          "mean_k": 14.95,
+          "completion_rate": 0.275,
+          "mean_trajectory_prefix_ms": 98.3041191851953
+        },
+        "paired_endpoint_k_difference": {
+          "mean": -11.95,
+          "bootstrap95": [
+            -12.0,
+            -11.85
+          ]
+        },
+        "paired_prefix_perception_ms_difference": {
+          "mean": -73.60432033310644,
+          "bootstrap95": [
+            -74.17198927862046,
+            -72.87579996263958
+          ]
+        },
+        "noninferiority": {
+          "method": "paired_discordance_bonferroni_clopper_pearson_lower_bound",
+          "confidence_level": 0.95,
+          "n": 40,
+          "minimum_n": 30,
+          "gains_candidate_only": 5,
+          "losses_comparator_only": 8,
+          "paired_difference": -0.075,
+          "lower_confidence_bound": -0.31461839254061746,
+          "margin": 0.05,
+          "sufficient_sample_for_declared_plan": true,
+          "noninferiority_pass": false
+        },
+        "unsafe_act_episode_count": 32,
+        "degenerate_h_k_stage_rate": 0.0
+      },
+      "keyed_insertion": {
+        "act_hitting_time": {
+          "act_rate": 1.0,
+          "mean_k_given_act": 3.0,
+          "act_before_estimator_rate_all_episodes": 1.0,
+          "act_before_estimator_rate_given_act": 1.0
+        },
+        "executed_native_persistence_policy": {
+          "mean_endpoint_k": 3.0,
+          "completion_rate": 0.125,
+          "hold_rate": 0.0,
+          "unsafe_act_rate": 0.875,
+          "mean_trajectory_prefix_ms": 24.69979885208886
+        },
+        "estimator_stop": {
+          "mean_k": 14.95,
+          "completion_rate": 0.1,
+          "mean_trajectory_prefix_ms": 98.3041191851953
+        },
+        "paired_endpoint_k_difference": {
+          "mean": -11.95,
+          "bootstrap95": [
+            -12.0,
+            -11.85
+          ]
+        },
+        "paired_prefix_perception_ms_difference": {
+          "mean": -73.60432033310644,
+          "bootstrap95": [
+            -74.17021670684335,
+            -72.8995222170488
+          ]
+        },
+        "noninferiority": {
+          "method": "paired_discordance_bonferroni_clopper_pearson_lower_bound",
+          "confidence_level": 0.95,
+          "n": 40,
+          "minimum_n": 30,
+          "gains_candidate_only": 4,
+          "losses_comparator_only": 3,
+          "paired_difference": 0.025,
+          "lower_confidence_bound": -0.17593933343867887,
+          "margin": 0.05,
+          "sufficient_sample_for_declared_plan": true,
+          "noninferiority_pass": false
+        },
+        "unsafe_act_episode_count": 35,
+        "degenerate_h_k_stage_rate": 0.0
+      }
+    }
+  },
+  "evidence_boundary": {
+    "online_gate_uses_oracle": false,
+    "physical_robot_result_inferred_from_pose_error": false,
+    "trajectory_prefix_timing_is_not_online_speedup": true,
+    "result_scope": "instrumented iterative 6D pose backend; task readers are declared pose-error admissibility tests; oracle T* used only offline, after every online decision, to score ACT/HOLD episodes",
+    "continuum_representation_caveat": "T_hat_k is still represented in SE(3), a continuum manifold (theory/CONTINUUM_AUDIT_20260909.md item 1); unchanged from run5",
+    "mixed_units_caveat": "a single H_k eigenvector mixes 3 rotation (radians) and 3 translation (metres) components, perturbed by one shared scalar magnitude without separate nondimensionalization -- unchanged from run5"
+  }
+}
