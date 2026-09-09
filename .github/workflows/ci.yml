@@ -1,0 +1,46 @@
+name: finite-diagnostic
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Unit controls and finite oracle checks
+        run: python -m unittest discover -s tests -v
+      - name: Re-run synthetic diagnostic
+        run: python benchmark.py
+      - name: Validate result record
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('results/results.json')
+          d = json.loads(p.read_text())
+          assert d['label'] == '[SimulatedData]'
+          assert d['tier'] == 'finite_diagnostic'
+          assert d['oracle_comparisons'] == 768
+          assert d['vision_model_executed'] is False
+          assert d['rigid_body_physics_executed'] is False
+          print('finite diagnostic verified')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: finite-diagnostic-py${{ matrix.python-version }}
+          path: |
+            results/results.json
+            results/summary.csv
