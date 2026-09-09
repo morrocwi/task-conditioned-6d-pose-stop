@@ -80,3 +80,18 @@ subset of it), never a broader claim. The matched-baseline framing already in th
 threshold can stop earlier while still producing unsafe ACT; the certificate trades a small HOLD
 rate for lower unsafe-ACT) is exactly the kind of narrow, evidence-backed distinction the founder
 wants kept, not "we are faster."
+
+## Release plan (founder, verbatim): "ultracode ทำงานจากด้าต้าเซตภายนอกพร้อมสรุปผลได้เลยและออกรีลีส"
+= ultracode the external-dataset work through to a summary and a release. Sequencing chosen to
+avoid a file race: the single background Agent (already dispatched, see above) is still running
+the actual download+ICP+lab-protocol work on this same repo's files. Do NOT launch a second agent
+touching the same files concurrently. As soon as that agent reports done, launch an ultracode
+Workflow (this repo's own culture demands independent review, never self-certification) for:
+(1) independent adversarial review of the produced lab_results.json/config/writeup against
+CONTRIBUTING.md's own checklist and the honesty guardrails above (a materially separate pass, not
+a restatement); (2) a clean human-readable results summary (matching the founder's own report
+table format: policy / mean endpoint / completion / HOLD / unsafe ACT, or an honest "did not
+complete X" if that's what happened); (3) only if the review passes (or founder accepts disclosed
+findings), tag+push+GitHub release on both origin and local — never release over an unresolved
+BLOCK. If the review finds the run did not actually succeed (blocked, degenerate, or overclaiming),
+report that plainly instead of releasing anyway.
