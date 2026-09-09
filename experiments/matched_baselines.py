@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """Same-split matched comparison for the central completion certificate.
 
-This post-review experiment uses new comparison-test seeds that were not used in
-previous reported final tests. All methods share the same TRAIN/CALIBRATION/TEST
-episodes, task readers, and numerical outcome oracle.
+This post-review experiment uses comparison-test seeds that are distinct from
+all previously reported final tests. All methods share the same TRAIN,
+CALIBRATION, TEST episodes, task readers, and numerical outcome oracle.
+
+IMPORTANT: comparator candidate grids are selected deterministically from
+CALIBRATION values only before TEST is evaluated. No test-outcome tuning occurs.
 
 Evidence boundary: generated point clouds + numerical ICP/Kabsch only.
 """
@@ -31,6 +34,19 @@ COMPARISON_TEST_SEEDS = (2026091061, 2026091062, 2026091063)
 RISK_TARGET = lc.ALPHA
 RISK_CONFIDENCE = 0.95
 MIN_ACT_RATE = 0.50
+MAX_THRESHOLD_CANDIDATES = 128
+
+
+def candidate_grid(values, max_candidates=MAX_THRESHOLD_CANDIDATES):
+    """Deterministic monotone grid derived only from calibration values."""
+    x = np.unique(np.asarray(list(values), dtype=float))
+    x = x[np.isfinite(x)]
+    if x.size == 0:
+        return []
+    if x.size <= max_candidates:
+        return [float(v) for v in x]
+    idx = np.unique(np.linspace(0, x.size - 1, max_candidates, dtype=int))
+    return [float(x[i]) for i in idx]
 
 
 def outcome(ep, task, endpoint_k, act):
@@ -67,6 +83,8 @@ def central_task_score(stage, task, model):
 
 
 def scalar_policy(ep, task, model, threshold):
+    if threshold is None:
+        return outcome(ep, task, ep.stages[-1].k, False)
     for stage in ep.stages:
         if central_task_score(stage, task, model) <= float(threshold):
             return outcome(ep, task, stage.k, True)
@@ -113,9 +131,8 @@ def qualify(rows):
 
 
 def choose_fixed(cal, task):
-    candidates = range(cal[0].stages[-1].k + 1)
     valid = []
-    for k in candidates:
+    for k in range(cal[0].stages[-1].k + 1):
         rows = [fixed_policy(ep, task, k) for ep in cal]
         q = qualify(rows)
         if q["unsafe_upper"] <= RISK_TARGET:
@@ -127,7 +144,8 @@ def choose_fixed(cal, task):
 
 
 def choose_scalar(cal, task, model):
-    candidates = sorted({central_task_score(stage, task, model) for ep in cal for stage in ep.stages})
+    vals = (central_task_score(stage, task, model) for ep in cal for stage in ep.stages)
+    candidates = candidate_grid(vals)
     valid = []
     for th in candidates:
         rows = [scalar_policy(ep, task, model, th) for ep in cal]
@@ -135,13 +153,14 @@ def choose_scalar(cal, task, model):
         if q["unsafe_upper"] <= RISK_TARGET and q["act_rate"] >= MIN_ACT_RATE:
             valid.append((q["mean_endpoint_k"], -q["act_rate"], float(th), q))
     if not valid:
-        return {"status": "UNQUALIFIED", "threshold": None}
+        return {"status": "UNQUALIFIED", "threshold": None, "candidates_checked": len(candidates)}
     _, _, th, q = min(valid)
-    return {"status": "QUALIFIED", "threshold": th, "calibration": q}
+    return {"status": "QUALIFIED", "threshold": th, "calibration": q, "candidates_checked": len(candidates)}
 
 
 def choose_estimator_threshold(cal, task):
-    candidates = sorted({estimator_score(stage) for ep in cal for stage in ep.stages[:-1]})
+    vals = (estimator_score(stage) for ep in cal for stage in ep.stages[:-1])
+    candidates = candidate_grid(vals)
     valid = []
     for th in candidates:
         rows = [tuned_estimator_policy(ep, task, th) for ep in cal]
@@ -149,9 +168,9 @@ def choose_estimator_threshold(cal, task):
         if q["unsafe_upper"] <= RISK_TARGET:
             valid.append((q["mean_endpoint_k"], float(th), q))
     if not valid:
-        return {"status": "UNQUALIFIED", "threshold": 1.0}
+        return {"status": "UNQUALIFIED", "threshold": 1.0, "candidates_checked": len(candidates)}
     _, th, q = min(valid)
-    return {"status": "QUALIFIED", "threshold": th, "calibration": q}
+    return {"status": "QUALIFIED", "threshold": th, "calibration": q, "candidates_checked": len(candidates)}
 
 
 def summarize(rows):
@@ -182,38 +201,51 @@ def run(profile, out_dir):
     learned_cal, learned_q = lc.calibrate(cal, model, lc.ALPHA)
     raw_cal, raw_q = raw.calibrate_envelope(cal, raw.ALPHA)
 
+    # Freeze all comparator parameters before opening comparison TEST.
+    frozen = {}
+    for task in ni.TASKS:
+        frozen[task] = {
+            "fixed": choose_fixed(cal, task),
+            "estimator_threshold": choose_estimator_threshold(cal, task),
+            "learned_scalar": choose_scalar(cal, task, model),
+        }
+
     test = []
     for seed in COMPARISON_TEST_SEEDS:
         test.extend(lc.generate(seed, cfg["test_per_seed"], cfg["max_iter"], cfg["points"]))
 
     task_results = {}
     for task in ni.TASKS:
-        fixed = choose_fixed(cal, task)
-        scalar = choose_scalar(cal, task, model)
-        est_tuned = choose_estimator_threshold(cal, task)
+        fixed = frozen[task]["fixed"]
+        scalar = frozen[task]["learned_scalar"]
+        est_tuned = frozen[task]["estimator_threshold"]
         policies = {
             "full_budget": [full_policy(ep, task) for ep in test],
             "estimator_default": [estimator_policy(ep, task) for ep in test],
             "fixed_risk_checked": [fixed_policy(ep, task, fixed["k"]) for ep in test],
             "estimator_threshold_risk_checked": [tuned_estimator_policy(ep, task, est_tuned["threshold"]) for ep in test],
-            "learned_scalar_risk_checked": [scalar_policy(ep, task, model, scalar["threshold"]) for ep in test] if scalar["threshold"] is not None else [outcome(ep, task, ep.stages[-1].k, False) for ep in test],
+            "learned_scalar_risk_checked": [scalar_policy(ep, task, model, scalar["threshold"]) for ep in test],
             "raw_completion_envelope": [raw_certificate_policy(ep, task, raw_q) for ep in test],
             "trajectory_conformal_completion": [learned_certificate_policy(ep, task, model, learned_q) for ep in test],
         }
-        task_results[task] = {
-            "tuning": {"fixed": fixed, "estimator_threshold": est_tuned, "learned_scalar": scalar},
-            "policies": {name: summarize(rows) for name, rows in policies.items()},
-        }
+        task_results[task] = {"tuning": frozen[task], "policies": {name: summarize(rows) for name, rows in policies.items()}}
 
     payload = {
-        "schema_version": 1,
+        "schema_version": 2,
         "label": "[MatchedComparison-NewTestSeeds]",
-        "configuration": {**cfg, "risk_target": RISK_TARGET, "risk_confidence": RISK_CONFIDENCE, "min_act_rate_scalar": MIN_ACT_RATE},
+        "configuration": {
+            **cfg,
+            "risk_target": RISK_TARGET,
+            "risk_confidence": RISK_CONFIDENCE,
+            "min_act_rate_scalar": MIN_ACT_RATE,
+            "max_threshold_candidates": MAX_THRESHOLD_CANDIDATES,
+        },
         "lineage": {
             "train_seed": lc.TRAIN_SEED,
             "calibration_seed": lc.CAL_SEED,
             "comparison_test_seeds": list(COMPARISON_TEST_SEEDS),
             "previous_final_test_seeds_excluded": list(lc.FINAL_TEST_SEEDS),
+            "test_opened_only_after_comparator_parameters_frozen_in_run": True,
         },
         "learned_calibration": learned_cal,
         "raw_calibration": raw_cal,
@@ -224,6 +256,7 @@ def run(profile, out_dir):
             "matched_train_calibration_test_episodes": True,
             "new_test_seeds_not_in_previous_final_test": True,
             "risk_checked_baselines_use_calibration_only": True,
+            "test_outcomes_used_for_tuning": False,
             "trajectory_prefix_timing_is_online_speedup": False,
             "camera_executed": False,
             "physical_robot_executed": False,
