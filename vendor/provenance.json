@@ -1,0 +1,1 @@
+{"repository":"morrocwi/information-discrete-math","commit":"c827a917dcaa7ee413135d930155fdb1775c6bdd","aggregate_git_blob":"ea385d55fb8210b0d8586a74acb75c1d65cb4bec","execution":"Finite diagnostic uses the vendored min-plus all_pairs(W, MIN_PLUS) implementation corresponding to the pinned IDM aggregate core; the full idm.solve facade is not executed."}
