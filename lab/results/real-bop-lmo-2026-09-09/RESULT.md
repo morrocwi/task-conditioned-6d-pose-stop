@@ -37,7 +37,7 @@ numerical-only fixture (`experiments/numerical_icp.py`).
 
 ## Primary results
 
-Held-out FINAL TEST whole-trajectory envelope coverage: **87.5%** (32/40), Wilson 95% CI [73.9%, 94.5%] — the interval straddles the 90% nominal target; this run neither confirms nor rules out in-distribution coverage calibration at this sample size.
+Held-out FINAL TEST whole-trajectory envelope coverage: **87.5%** (35/40), Wilson 95% CI [73.9%, 94.5%] — the interval straddles the 90% nominal target; this run neither confirms nor rules out in-distribution coverage calibration at this sample size.
 
 | Task | test coverage | `k_C<k_E` | mean `k_C-k_E` [95% CI] | estimator completion | certificate completion | completion difference [95% CI] | HOLD | unsafe ACT | perception latency difference [95% CI] | non-inferiority |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
