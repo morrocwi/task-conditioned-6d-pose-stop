@@ -11,9 +11,10 @@ EXECUTED: generated 3-D point clouds, iterative ICP/Kabsch trajectories,
 NOT EXECUTED: camera/RGB-D sensor, neural pose model, contact physics,
               physical robot.
 
-The gate receives only the current observable ICP proxy, the frozen calibration
-scale, and the declared task. Hidden ground-truth pose error is used only to
-construct the calibration score offline and to evaluate held-out outcomes.
+The online gate receives only the retained refinement stages, the frozen
+calibration scale, and the declared task. Hidden ground-truth pose is not in the
+gate interface. It is used only offline to construct calibration scores and to
+evaluate held-out outcomes.
 
 The calibration score is episode-level: it takes the maximum normalized pose
 error over every refinement stage and every pose coordinate in an episode. This
@@ -109,15 +110,16 @@ def robust_task_pass(task, bounds):
     return bool(sum(float(b[i]) / float(spec["tol"][i]) for i in spec["mask"]) <= 1.0)
 
 
-def first_completion_stage(ep, task, q):
+def first_completion_stage(stages, task, q):
+    """Online gate: deliberately receives no Episode/Rg/tg ground-truth object."""
     gate_s = 0.0
-    for s in ep.stages:
+    for s in stages:
         tick = time.perf_counter()
         ok = robust_task_pass(task, completion_bounds(s, q))
         gate_s += time.perf_counter() - tick
         if ok:
             return s.k, True, gate_s
-    return ep.stages[-1].k, False, gate_s
+    return stages[-1].k, False, gate_s
 
 
 def episode_covered(ep, q):
@@ -129,7 +131,7 @@ def episode_covered(ep, q):
 
 
 def eval_task_stop(ep, task, q):
-    k, act, gate_s = first_completion_stage(ep, task, q)
+    k, act, gate_s = first_completion_stage(ep.stages, task, q)
     st = ep.stages[k]
     err = ni.pose_error(st.R, st.t, ep.Rg, ep.tg)
     success = bool(act and ni.task_success(task, err))
