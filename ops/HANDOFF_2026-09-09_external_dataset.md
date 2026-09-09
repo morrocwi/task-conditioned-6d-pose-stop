@@ -324,3 +324,37 @@ Toledo proposal: registry/proposals/spectral_decay_predictor.json (PROP-DECAY-01
 weld/M.40.v1, weld/M.42.v1, q_formal/M.07.v1 -- honest caveats disclosed in the proposal itself
 (the H_k~L_R identification is an ANALOGY not a proven fact; this is higher-risk than runs 2-3,
 which only touched calibration, not the error estimate itself).
+
+## Fourth cycle executed and pushed, 2026-09-09
+
+Predeclaration commit `724c47a` (frozen config/split/RATIONALE + seed-identical
+`bop_lmo_episodes_decay/{train,calibration,test}.jsonl`, before `test.jsonl` was ever evaluated),
+result commit `bb90b68`. Both findings are refutations:
+
+1. **Structural**: the PROP-DECAY-01 `H_k ~ graph-Laplacian L_R` identification does not hold for
+   this real backend. `H_k=J^T J` is a fixed 6x6 SPD Gauss-Newton Hessian over the 6 pose degrees
+   of freedom (exposed via a purely additive `lab/bop_icp_backend.py:normal_equations_H`
+   diagnostic; the Kabsch update itself is unchanged) — it has no vertex/edge structure, so a
+   graph diameter D is undefined for it, confirmed numerically against a separately-built real
+   correspondence k-NN graph (n=400, D=16, `4/(nD)=0.000625`, unrelated to that same stage's
+   `H_k` `lambda_min=0.1235`). The paired Coq-proof attempt on `q_formal/M.07` itself
+   (`~/ANSE.ASIA/toledo`, separate task) also did not close in the time given — see that repo's
+   own report for why (needs the full min-max/Courant-Fischer characterization of lambda_2, not
+   available in this workspace's existing single-Rayleigh-pair spectral Coq idiom).
+2. **Empirical**: using the correct quantity for `H_k` instead (ordinary matrix condition number,
+   Kantorovich contraction bound, combined with the unmodified whole-trajectory C7-C9
+   calibration), the resulting predictor's calibrated `q=3.298` is LARGER than both runs 1-2's
+   `q≈2.0008` and every run3 Bonferroni per-checkpoint `q` (2.085-2.200). Certificate rate stays
+   at exactly 0.0 for all three tasks (100% HOLD), the fourth cycle in a row to find this.
+
+Full detail: `lab/results/real-bop-lmo-2026-09-09-run4/RESULT.md`. `CLAIMS.md`, `README.md`,
+`theory/FORMALIZATION_v1.md` (new C6b section) updated. GLS-2026-005 (glosa, separate repo)
+updated with the same outcome. Test suite: 81/81 pass (13 new tests in
+`tests/test_decay_predictor.py`). Independent review (a materially separate agent pass, not
+self-certification): verdict PASS — re-derived the core math, re-ran the evaluator and confirmed
+a byte-identical `lab_results.json`, confirmed the predeclaration/F4 commit ordering, confirmed no
+AI-vendor-attribution or local-path leaks in file content, confirmed no novelty/positioning
+overclaims, confirmed the new `DecayModel` branch in `predicted_log_error` is genuinely additive
+(re-ran run3's own invocation post-change and got a byte-identical result to what was already
+committed). Pushed to both `local` (Forgejo) and `origin` (GitHub) — no release/tag cut this
+cycle (no founder release request attached to this run).
