@@ -1,98 +1,128 @@
 # Task-Conditioned Early Stopping for Iterative 6D Pose Refinement
 
-Public research repository for an implementation-first study of **task-conditioned early stopping** in iterative 6D object-pose refinement for robotic manipulation.
+Public, implementation-first research repository.
 
-## Research question
+> **Question:** can pose refinement stop because the downstream task is already ready, even when the estimator itself would continue refining?
 
-> Can iterative 6D pose refinement stop **before estimator-side convergence** because the downstream manipulation task is already executable?
-
-The key distinction is:
+The central event is:
 
 ```text
-estimator convergence != downstream task sufficiency
+k_task < k_estimator
 ```
 
-The proposed stopping rule evaluates the current pose evidence against the declared task:
+where `k_task` is the first stage licensed by the downstream task gate and `k_estimator` is the estimator-side convergence stage.
+
+## What is now executable
+
+The repository contains two evidence layers:
+
+1. **Finite diagnostic** — exhaustive toy routing fixture (`benchmark.py`).
+2. **Numerical 6D backend** — real iterative point-to-point ICP/Kabsch registration on generated 3-D point clouds (`experiments/numerical_icp.py`).
+
+The numerical experiment uses disjoint **tuning**, **safety-calibration**, and **held-out test** splits. Hidden ground-truth pose error is used only for calibration/evaluation and is never passed to the task gate.
+
+It compares the same refinement trajectories under:
 
 ```text
-pose + uncertainty + task + context
-    -> ACT | CONTINUE | HOLD
+fixed-8 | full | estimator-stop | task-stop
 ```
 
-The project does **not** claim that task-aware perception, early stopping, or pose uncertainty are new in general. The narrow empirical hypothesis is that a real iterative 6D pose backend may sometimes satisfy the downstream task at an earlier refinement stage than its own generic stopping criterion.
+for three downstream predicates:
 
-## Current evidence status
+```text
+top suction | label alignment | keyed insertion
+```
 
-The repository currently contains a **finite synthetic diagnostic**, not a vision or robot performance benchmark.
+## Standard-profile result
 
-Executed so far:
+Held-out in-distribution test: 120 episodes; thresholds tuned on 96 separate episodes and checked on another 96 safety-calibration episodes.
 
-- 3 synthetic tasks: suction, label alignment, insertion
-- 2 synthetic perception-action menus
-- all 64 binary uncertainty fixture states
-- 6 policies
-- 2,304 policy rollouts
-- paired residual-error evaluation
-- bounded uncertainty and deliberate 6x undercoverage stress
-- standard Dijkstra and a pinned IDM min-plus core checked against exhaustive finite enumeration
+| Task | estimator mean k | task mean k | k_task < k_estimator | estimator completion | task completion | task HOLD |
+|---|---:|---:|---:|---:|---:|---:|
+| top suction | 14.033 | 10.292 | 92.50% | 94.17% | 93.33% | 6.67% |
+| label alignment | 14.033 | 10.550 | 90.83% | 93.33% | 91.67% | 6.67% |
+| keyed insertion | 14.033 | 11.542 | 90.00% | 92.50% | 90.83% | 9.17% |
 
-Not yet executed:
+Paired bootstrap intervals for `k_task - k_estimator` are strictly below zero for all three in-distribution tasks in the frozen standard run. See [`results/NUMERICAL_RESULTS.md`](results/NUMERICAL_RESULTS.md).
 
-- a real 6D vision backend
-- RGB-D/GPU refinement timing
-- rigid-body/contact physics
-- camera motion
-- physical robot manipulation
+This is **not** a real RGB-D/GPU/robot benchmark. Wall-clock time is a machine-specific secondary readout.
 
-## Main diagnostic result
+## Failure boundary is part of the result
 
-For the rich-menu insertion fixture:
+The same frozen gate is also tested under a declared `2x` sensor-noise shift. Top suction remains usable in this fixture, but label alignment loses substantial completion through HOLD and keyed insertion returns HOLD for every stress episode.
 
-| Method | Mean modeled cost | Success: bounded | Success: undercoverage |
-|---|---:|---:|---:|
-| one-shot | 0.000 | 30.26% | 1.16% |
-| full refinement | 15.719 | 100.00% | 90.41% |
-| mask greedy | 6.000 | 100.00% | 39.14% |
-| cost-aware greedy | 5.000 | 100.00% | 57.34% |
-| Dijkstra | 5.000 | 100.00% | 57.34% |
-| IDM min-plus | 5.000 | 100.00% | 57.34% |
+That negative result is deliberate: the repository does not hide distribution-shift failure behind success-conditional-on-ACT metrics.
 
-The modeled cost reduction is **not a measured GPU speedup**. The negative result is equally important: when uncertainty undercovers true error, selective stopping can preserve hidden pose error that broad refinement would correct.
+## Run it yourself
 
-## Run
+### Fastest route
 
-Python 3.10+; no third-party dependencies required for the finite fixture.
+Requires Python 3.10+.
 
 ```bash
-python benchmark.py
-python -m unittest discover -s tests -v
+python -m venv .venv
+# Linux/macOS
+source .venv/bin/activate
+# Windows PowerShell: .venv\Scripts\Activate.ps1
+
+python -m pip install -r requirements.txt
+python reproduce.py --profile quick
 ```
 
-## Next implementation gate
-
-The next experiment deliberately uses the smallest real action space:
+Outputs are written to:
 
 ```text
-ACT | CONTINUE_REFINEMENT | HOLD
+artifacts/numerical/
 ```
 
-Compare:
+For the frozen larger experiment:
+
+```bash
+python reproduce.py --profile standard
+```
+
+On a typical laptop the numerical standard profile is intended to finish in tens of seconds, not hours; timing depends on hardware.
+
+## Automatic checks
+
+GitHub Actions independently reruns the numerical fixture on Linux, macOS, and Windows and uploads result artifacts. Tests include exact Kabsch recovery, pose identity, task switching, a coupled insertion counterexample, disjoint split seeds, no hidden-ground-truth argument in the gate interface, evidence-boundary checks, and glosa claim-card disclosure checks.
+
+## Evidence discipline
+
+This repository applies the five-question / E-A-D discipline from **glosa — Rigour Without Infrastructure** to the research record:
 
 ```text
-fixed/full refinement
-vs estimator-side early stopping
-vs task-conditioned early stopping
+Q1 what was actually seen/run?
+Q2 what does the record alone separate?
+Q3 what did AI add?
+Q4 what is assumed?
+Q5 what independent check was run?
 ```
 
-The decisive event is `k_task < k_estimator`: the task becomes ready before the estimator reaches its generic stopping condition.
+See [`evidence/claim_card.json`](evidence/claim_card.json).
 
-## IDM
+Current evidence ceiling: **K1 public provisional / I4 mechanical-original-record checks**. Independent external human replication and real robotic validation have not yet occurred.
 
-IDM is retained only as an optional finite routing backend for richer future action menus. It is **not** the novelty claim. In the current small graph fixture, Dijkstra and the IDM min-plus core recover the same modeled optimum, while Dijkstra has lower routing overhead.
+## Claim boundary
 
-## Reproducibility
+Supported now:
 
-Synthetic benchmark seed: `20260909`.
+- the public task-stop implementation runs on iterative numerical 6D registration;
+- on the frozen in-distribution numerical fixture, task-conditioned stopping often occurs earlier than the estimator criterion;
+- ACT, HOLD, unsafe ACT, completion, iterations, and timing are all reported;
+- distribution shift can erase the benefit or force HOLD.
+
+Still open / HOLD:
+
+- real RGB-D or GPU acceleration;
+- FoundationPose-specific speedup;
+- physical manipulation non-inferiority;
+- safety certification;
+- IDM-specific advantage.
+
+## Why IDM is not the headline
+
+IDM remains an optional finite routing backend in the older rich-action diagnostic. It is not the novelty claim. The present research question is backend-independent: **estimator convergence is not the same condition as downstream task sufficiency.**
 
 ## Author
 
