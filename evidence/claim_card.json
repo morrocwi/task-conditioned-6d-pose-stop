@@ -12,20 +12,24 @@
       "Executed a raw-proxy trajectory-level split-conformal ablation: 95.83% held-out whole-trajectory coverage in its frozen in-distribution run but HOLD on 100% of episodes for all three tasks.",
       "Executed a learned-shape TRAIN/CALIBRATION/FINAL TEST experiment with 160 train episodes, 160 calibration episodes, 120 previously unused final-test episodes, and a 60-episode 2x-noise stress set.",
       "In the first frozen learned-shape final test, observed whole-trajectory coverage was 85.00% against a nominal 90% marginal target; k_C<k_E occurred in 87.5-90.0% of episodes depending on task; unsafe ACT was 0 in the 120-episode numerical final test.",
-      "GitHub Actions executed the numerical stack on Ubuntu, macOS, and Windows and executed a separate Ubuntu standard-evidence job."
+      "Executed 10 additional complete TRAIN-CALIBRATION-TEST cycles with the learned method frozen. Mean realized whole-trajectory coverage was 91.17%, median 91.67%, range 83.33-95.00%, and 9/10 cycles were at or above the nominal 90% proportion.",
+      "Across the 10 cycles, mean k_C<k_E rates were 92.33% for top suction, 91.33% for label alignment, and 83.83% for keyed insertion; mean completion differences versus estimator stopping were -1.17, 0.00, and -0.33 percentage points, respectively; mean unsafe ACT was zero.",
+      "GitHub Actions executed the current numerical stack and repeated-cycle diagnostic successfully on Ubuntu, macOS, and Windows, with a separate Ubuntu standard-evidence job."
     ],
     "Q2_record_separates": [
       "Within the declared numerical generator, estimator-side stopping can be compared with task stopping on identical retained refinement trajectories.",
       "The finite completion-envelope record separates latent pose identity from task-reader invariance: multiple retained pose completions can yield the same task verdict.",
       "The raw-proxy conformal ablation separates high statistical coverage from operational usefulness: a high-coverage set can be too wide to license any ACT.",
       "The learned-shape record separates an observable error-shape model from the subsequent conformal calibration scale; training, calibration, and final evaluation have different roles.",
-      "The record separates the nominal conformal coverage target from the realized empirical final-test coverage; 85% observed is not silently rewritten as 90% achieved.",
+      "The record separates the nominal conformal coverage target from any one realized empirical final-test coverage; the first 85% result is retained rather than silently rewritten as 90% achieved.",
+      "The repeated-cycle record separates one low realized final-test proportion from the empirical distribution of the same frozen procedure across new calibration/test draws within the same declared generator.",
+      "The repeated-cycle record does not convert 10 numerical replications into a universal statistical theorem or external empirical replication.",
       "The record separates in-distribution evaluation from a declared 2x sensor-noise stress condition.",
       "The record does not separate numerical-backend behavior from real RGB-D/GPU/robot behavior, and marginal conformal coverage does not establish deterministic safety."
     ],
     "Q3_ai_filled": [
-      "The AI assistant drafted and revised the public experiment code, test harness, statistical summaries, documentation, theory notes, and manuscript wording under the founder-selected research problem and hypothesis.",
-      "Task thresholds, split protocol, calibration design, stress-test implementation, numerical floors, observable feature map, log-linear error-shape model, and episode-level nonconformity construction were proposed during AI-assisted development and are disclosed as design choices, not source facts.",
+      "The AI assistant drafted and revised the public experiment code, test harness, statistical summaries, documentation, theory notes, replication study, and manuscript wording under the founder-selected research problem and hypothesis.",
+      "Task thresholds, split protocol, calibration design, stress-test implementation, numerical floors, observable feature map, log-linear error-shape model, episode-level nonconformity construction, and repeated-cycle seed scheme were proposed during AI-assisted development and are disclosed as design choices, not source facts.",
       "The admissible-completion-set, task-reader-image, robust-verdict, reader-diameter, refinement-contraction, finite-completion, trajectory-nonconformity, calibration-scale, calibrated-box, and coverage-qualified-stop equations C1-C10 are NEW project definitions/derivations proposed during AI-assisted development; they are not existing Toledo equations.",
       "The conditional coverage-to-task propositions P1-P2 are NEW project derivations combining standard split-conformal coverage with set inclusion under the declared numerical task reader; they are not existing Toledo theorems.",
       "Split conformal prediction and conformal 6D pose uncertainty are external prior art; neither is invented by this project nor attributed to Toledo."
@@ -35,7 +39,8 @@
       "Nearest-neighbour point-to-point ICP with damped Kabsch updates is a useful iterative pose-refinement proxy.",
       "The local linearized dispersion, proposed update, RMS residual, and normalized stage are useful observable features for a simple error-shape model in this numerical generator.",
       "The six log-linear shape regressions are treated as frozen after TRAIN; they are not claimed to be optimal or transferable to a real pose estimator.",
-      "TRAIN, CALIBRATION, and FINAL TEST episodes are exchangeable only within the declared in-distribution numerical generator; the 2x-noise stress condition intentionally violates that match.",
+      "TRAIN, CALIBRATION, and TEST episodes are exchangeable only within the declared in-distribution numerical generator; the 2x-noise stress condition intentionally violates that match.",
+      "The 10-cycle replication study samples new deterministic seeds from the same declared generator and therefore tests repeatability within that generator, not cross-domain transportability.",
       "The fixed numerical floors are regularizers selected for this fixture, not physical constants.",
       "Episode-level split-conformal calibration licenses a marginal coverage interpretation only under its statistical assumptions; it is not a deterministic safety certificate or conditional guarantee for every context.",
       "The completion set is a retained computational construction of still-admissible alternatives, not a claim that every member exists or that a numerical set describes the full physical world.",
@@ -45,12 +50,13 @@
     "Q5_tested": [
       "I4: GitHub Actions reruns unit controls and experiments from public source on Linux, macOS, and Windows.",
       "I4: hidden ground-truth pose is absent from the online learned-gate function signature and is used only in offline TRAIN/CALIBRATION/evaluation functions.",
-      "I4: TRAIN, CALIBRATION, FINAL TEST, and stress seeds are disjoint and mechanically declared.",
+      "I4: TRAIN, CALIBRATION, FINAL TEST, stress, and repeated-cycle seeds are mechanically declared and role-separated.",
       "I4: development test seeds inspected during method construction are explicitly retired and mechanically checked not to reappear in the learned method's final-test lineage.",
       "I4: Kabsch recovery, pose identity, task switch, coupled-task counterexample, completion-set controls, conformal order-statistic tests, trajectory-wide score tests, robust-PASS set-inclusion tests, and evidence-boundary checks are automated.",
       "I4: final evaluation checks whole-trajectory envelope coverage rather than only the adaptively selected stopping stage.",
       "I4: unsafe_act_on_covered_episode_count is mechanically required to be zero for the implemented numerical readers.",
       "I4: the first frozen learned standard final test is retained even though realized coverage was 85% rather than the nominal 90% target.",
+      "I4: the learned method is rerun without tuning across 10 complete TRAIN-CALIBRATION-TEST cycles; mean realized coverage is 91.17% with a range of 83.33-95.00% and 9/10 cycles at or above the nominal proportion.",
       "I5 external independent human replication has not yet been obtained."
     ]
   },
@@ -59,8 +65,8 @@
     "executed_completion_envelope": "A retained pose completion set can be task-invariant without identifying one latent pose in the declared numerical readers.",
     "negative_raw_proxy_ablation": "The frozen raw-proxy conformal envelope achieved 95.83% whole-trajectory coverage but HOLD 100% for all tasks, showing that coverage alone is not operational usefulness.",
     "executed_learned_certificate": "In the first frozen 120-episode learned-shape final test, k_C<k_E occurred in 87.5-90.0% of episodes, completion differed from estimator stopping by 0 to -2.5 percentage points, and unsafe ACT was 0; observed whole-trajectory coverage was 85% against a nominal 90% target.",
-    "open_statistical_replication": "Repeated independent TRAIN/CALIBRATION/FINAL TEST cycles are needed to characterize the distribution of realized coverage and stopping utility rather than relying on one calibration realization.",
+    "executed_numerical_replication": "Across 10 additional frozen-method TRAIN-CALIBRATION-TEST cycles, mean realized whole-trajectory coverage was 91.17% (median 91.67%, range 83.33-95.00%; 9/10 cycles >=90%). Mean k_C<k_E was 83.83-92.33% by task and mean completion difference versus estimator stopping ranged from 0 to -1.17 percentage points; mean unsafe ACT was zero.",
     "open_hypothesis": "A real iterative RGB-D 6D pose backend can realize task-reader-invariant calibrated completion envelopes early enough to reduce end-to-end latency without unacceptable task-completion loss.",
-    "hold": ["Deterministic safety guarantee from conformal marginal coverage", "Empirical claim that the nominal 90% coverage target was achieved in the first frozen final test", "Coverage under arbitrary distribution shift", "Real RGB-D/GPU speedup", "Physical robot non-inferiority", "Safety certification", "IDM-specific advantage"]
+    "hold": ["Deterministic safety guarantee from conformal marginal coverage", "Universal claim that every realized test set will show >=90% coverage", "Coverage under arbitrary distribution shift", "Real RGB-D/GPU speedup", "Physical robot non-inferiority", "Safety certification", "IDM-specific advantage"]
   }
 }
