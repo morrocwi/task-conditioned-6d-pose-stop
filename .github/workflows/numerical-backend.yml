@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'experiments/**'
+      - 'theory/**'
       - 'evidence/**'
       - 'tests/**'
       - 'requirements.txt'
@@ -33,6 +34,7 @@ jobs:
         run: |
           python -m unittest discover -s tests -v
           python evidence/validate_claim_card.py
+          python theory/completion_envelope.py
       - name: Reproduce numerical backend (CI profile)
         run: python experiments/numerical_icp.py --profile ci --out-dir artifacts/numerical
       - name: Check evidence boundary
