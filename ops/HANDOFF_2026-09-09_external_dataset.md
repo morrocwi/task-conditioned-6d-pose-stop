@@ -237,3 +237,19 @@ the calibrated-envelope-construction step (observable feature vector / conformal
 accordingly; no existing OPEN/HOLD item retired.
 
 Test suite, leak-scan, and push status: see the commit(s) following this handoff entry.
+
+## Registered in glosa, 2026-09-09: GLS-2026-005
+
+Founder: "ใช้ glosa สร้างสมมติฐานและยกระดับงาน". Registered lightweight (P02 intake + P08
+diagnosis, full spine deliberately skipped, disclosed) at
+`~/ANSE.ASIA/glosa/projects/GLS-2026-005_pose-stop-conformal-diagnosis/` (registry entry
+`GLS-2026-005`, Blackbox Log `BBL-2026-09-09-249`). Diagnosis: the calibrated conformal quantile
+`q~2.0008` (exp(q)~7.4x multiplicative inflation, rank 37/40) is the likely dominant driver of the
+too-wide envelope on both real-data runs, not task tolerances (run2 already ruled that out).
+Falsifiable next hypothesis, NOT yet tested: a per-stage or sequentially-valid conformal
+aggregation (instead of the current whole-trajectory max over 15 stages x 6 coords) should shrink
+q_alpha and could raise certificate rate above 0% on the identical data. Tiered `Dr`, explicitly
+not `finite_diagnostic` -- P08 disciplines 2 (test the prediction) and 4 (independent
+re-verification) are not yet applied; see the full diagnosis record for exactly what's missing.
+This is the next real-data cycle to run when authorized (a third BOP-LMO run, same predeclare-
+before-final-test discipline as run 2).
