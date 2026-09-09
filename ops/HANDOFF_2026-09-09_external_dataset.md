@@ -183,3 +183,23 @@ F4 (process gap, disclosed not fixed): future real-data runs should commit the f
 config.json/split_manifest.json (or at least the sampling/split RULE, before any data-dependent
 value is chosen) in a commit that predates seeing any final-test result, not alongside it. Track
 this as a lab-protocol hardening item for the next real-backend run.
+
+## Second real-data run requested, 2026-09-09: "test dataset again"
+
+Founder: "and. test dataset again" (terse, no further detail attached). Interpreted as: run another
+real-data validation cycle on the same BOP LM-O dataset family, this time explicitly fixing the F4
+process gap disclosed in v0.7.0's release notes (freeze config.json/split_manifest.json's sampling
+and split RULE in its own commit, before any data-dependent value or final-test result is seen --
+not alongside lab_results.json as last time), and address RESULT.md's own stated likely cause of
+the 0% certificate rate: task tolerances were reused byte-identical from the numerical fixture
+(lab/config.example.json) rather than derived for the real ape/driller objects' actual achievable
+ICP accuracy in a 15-iteration budget. Re-running with the IDENTICAL tolerances would just reproduce
+the same degenerate result with no new information -- not useful "testing again."
+
+Plan for this run: (1) commit a frozen config (sampling rule + split rule + EITHER the same
+tolerances, to test reproducibility of the same finding, OR properly re-derived tolerances for the
+real objects, with the derivation method stated honestly and NOT tuned by peeking at final-test
+outcomes) in its own commit, before opening final test; (2) re-run the full lab protocol; (3) report
+whatever happens plainly, including if the result is unchanged, worse, or newly supports H2-H4.
+Same honesty guardrails as the first run (CONTRIBUTING.md, evidence/ADVERSARIAL_REVIEW_RESPONSE.md,
+this file's novelty/positioning constraints above) apply unchanged.
