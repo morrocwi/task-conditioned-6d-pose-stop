@@ -43,6 +43,8 @@ jobs:
         run: python experiments/conformal_completion.py --profile ci --out-dir artifacts/conformal-raw
       - name: Reproduce learned-shape calibrated certificate (CI profile)
         run: python experiments/learned_conformal_completion.py --profile ci --out-dir artifacts/conformal-learned
+      - name: Same-split matched comparator study (CI profile)
+        run: python experiments/matched_baselines.py --profile ci --out-dir artifacts/matched-baselines
       - name: Reduced repeated calibration-test diagnostic (CI profile)
         run: python experiments/replication_study.py --profile ci --out-dir artifacts/replication
       - name: University lab harness smoke test
@@ -77,6 +79,13 @@ jobs:
               for task in condition['tasks'].values():
                   assert task['unsafe_act_on_covered_episode_count']==0
 
+          matched=json.loads(Path('artifacts/matched-baselines/matched_baselines.json').read_text())
+          assert matched['label']=='[MatchedComparison-NewTestSeeds]'
+          assert matched['evidence_boundary']['matched_train_calibration_test_episodes'] is True
+          assert matched['evidence_boundary']['test_outcomes_used_for_tuning'] is False
+          assert matched['evidence_boundary']['trajectory_prefix_timing_is_online_speedup'] is False
+          assert set(matched['lineage']['comparison_test_seeds']).isdisjoint(set(matched['lineage']['previous_final_test_seeds_excluded']))
+
           repl=json.loads(Path('artifacts/replication/replication_study.json').read_text())
           assert repl['label']=='[NumericalReplication-ReducedConfiguration]'
           assert repl['evidence_boundary']['method_tuned_inside_replication'] is False
@@ -91,7 +100,7 @@ jobs:
           for task in lab['evaluation']['tasks'].values():
               assert task['unsafe_act_on_covered_episode_count']==0
               assert task['timing']['latency_reduction_pass'] is None
-          print('evidence boundaries, fail-closed certificate, and inference controls: PASS')
+          print('evidence boundaries, fail-closed certificate, matched comparators, and inference controls: PASS')
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -100,6 +109,7 @@ jobs:
             artifacts/numerical/
             artifacts/conformal-raw/
             artifacts/conformal-learned/
+            artifacts/matched-baselines/
             artifacts/replication/
             artifacts/lab-example/
 
@@ -117,6 +127,8 @@ jobs:
         run: python experiments/conformal_completion.py --profile standard --out-dir artifacts/conformal-raw-standard
       - name: Standard learned-shape coverage-qualified stopping experiment
         run: python experiments/learned_conformal_completion.py --profile standard --out-dir artifacts/conformal-learned-standard
+      - name: Standard same-split matched comparator study on new test seeds
+        run: python experiments/matched_baselines.py --profile standard --out-dir artifacts/matched-baselines-standard
       - name: Reduced-configuration repeated TRAIN-CALIBRATION-TEST diagnostic
         run: python experiments/replication_study.py --profile standard --out-dir artifacts/replication-standard
       - name: Verify standard evidence records
@@ -139,6 +151,13 @@ jobs:
               for task in condition['tasks'].values():
                   assert task['unsafe_act_on_covered_episode_count']==0
 
+          m=json.loads(Path('artifacts/matched-baselines-standard/matched_baselines.json').read_text())
+          assert m['configuration']['train_n']==160
+          assert m['configuration']['cal_n']==160
+          assert len(m['lineage']['comparison_test_seeds'])==3
+          assert m['evidence_boundary']['test_outcomes_used_for_tuning'] is False
+          assert set(m['lineage']['comparison_test_seeds']).isdisjoint(set(m['lineage']['previous_final_test_seeds_excluded']))
+
           r=json.loads(Path('artifacts/replication-standard/replication_study.json').read_text())
           assert r['configuration']['replicates']==10
           assert r['label']=='[NumericalReplication-ReducedConfiguration]'
@@ -153,4 +172,5 @@ jobs:
           path: |
             artifacts/conformal-raw-standard/
             artifacts/conformal-learned-standard/
+            artifacts/matched-baselines-standard/
             artifacts/replication-standard/
