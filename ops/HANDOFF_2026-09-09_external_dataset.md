@@ -312,3 +312,15 @@ be cheaper than the joint one at this sample size, not the union-bound argument.
 `lab/results/real-bop-lmo-2026-09-09-run3/RESULT.md`. CLAIMS.md, README.md, and
 theory/FORMALIZATION_v1.md (new C9b subsection) updated accordingly. GLS-2026-005's diagnosis in
 glosa updated with the same outcome, its own commit in that repo.
+
+## Fourth cycle authorized, 2026-09-09: spectrally-derived decay predictor
+Founder: "หาขอบเขตล่างด้วยสมการ turbulance ที่เราพัฒนาไว้ได้" then "ทำเลย" -- use Toledo's own spectral
+bounds (weld/M.40 Anderson-Morley, weld/M.42 Rayleigh -- both real Coq witnesses, proven today) plus
+the Mohar/Fiedler diameter floor lambda_2>=4/(nD) (q_formal/M.07, currently a bare citation, not yet
+Coq-proven) to replace C6's fitted log-linear error-scale predictor with a decay law derived from
+the ICP normal-equations matrix's own condition number kappa=lambda_max/lambda_2:
+rho_k<=(kappa-1)/(kappa+1), s_k,i := rho_k^(K-k) * current residual.
+Toledo proposal: registry/proposals/spectral_decay_predictor.json (PROP-DECAY-01), parented to L_R,
+weld/M.40.v1, weld/M.42.v1, q_formal/M.07.v1 -- honest caveats disclosed in the proposal itself
+(the H_k~L_R identification is an ANALOGY not a proven fact; this is higher-risk than runs 2-3,
+which only touched calibration, not the error estimate itself).
