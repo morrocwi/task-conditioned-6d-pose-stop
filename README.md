@@ -1,61 +1,124 @@
-# Task-Conditioned Early Stopping for Iterative 6D Pose Refinement
+# Coverage-Qualified Task Stopping for Iterative 6D Pose Refinement
 
 Public, implementation-first research repository.
 
-> **Question:** can pose refinement stop because the downstream task is already ready, even when the estimator itself would continue refining?
+> **Question:** can iterative pose refinement stop before estimator-side convergence because every pose still admitted by a calibrated completion envelope already gives the same downstream task verdict?
 
-The central event is:
+The central event is now:
 
 ```text
-k_task < k_estimator
+k_C < k_E
 ```
 
-where `k_task` is the first stage licensed by the downstream task gate and `k_estimator` is the estimator-side convergence stage.
+where `k_C` is the first stage whose **calibrated completion envelope is entirely PASS under the declared task reader**, and `k_E` is estimator-side convergence.
 
-## What is now executable
+This is intentionally stronger than stopping on a raw confidence/uncertainty threshold.
 
-The repository contains two evidence layers:
+## Core distinction
+
+```text
+pose not known exactly
+        !=
+task verdict unresolved
+```
+
+A robot does not need latent pose identity if the unresolved alternatives no longer contain a distinction that can change the declared task outcome.
+
+The online rule is:
+
+```text
+observable refinement readout
+        -> calibrated completion envelope
+        -> downstream task reader
+        -> ACT | CONTINUE | HOLD
+```
+
+ACT is licensed only when **every pose error in the retained completion set passes the task reader**.
+
+## Evidence layers
+
+The repository now contains four explicit layers:
 
 1. **Finite diagnostic** — exhaustive toy routing fixture (`benchmark.py`).
-2. **Numerical 6D backend** — real iterative point-to-point ICP/Kabsch registration on generated 3-D point clouds (`experiments/numerical_icp.py`).
+2. **Numerical 6D backend** — iterative point-to-point ICP/Kabsch on generated 3-D point clouds (`experiments/numerical_icp.py`).
+3. **Raw-proxy completion ablation** — trajectory-level split calibration directly on the local proxy (`experiments/conformal_completion.py`).
+4. **Learned-shape calibrated certificate** — TRAIN a fixed observable error-shape model, CALIBRATE one conformal score per whole refinement episode, then evaluate on new FINAL TEST seeds (`experiments/learned_conformal_completion.py`).
 
-The numerical experiment uses disjoint **tuning**, **safety-calibration**, and **held-out test** splits. Hidden ground-truth pose error is used only for calibration/evaluation and is never passed to the task gate.
+No camera, RGB-D sensor, neural pose model, contact physics, or physical robot is executed by these numerical experiments.
 
-It compares the same refinement trajectories under:
+## Why the completion envelope exists
+
+The Toledo-derived project construction is documented in [`theory/TOLEDO_COMPLETION_ENVELOPE.md`](theory/TOLEDO_COMPLETION_ENVELOPE.md). The robotics-specific equations are explicitly labeled as **NEW project definitions/derivations**, not existing Toledo mathematics.
+
+The key set is
 
 ```text
-fixed-8 | full | estimator-stop | task-stop
+C_k = latent pose completions not yet excluded by the retained evidence
 ```
 
-for three downstream predicates:
+and the task verdict is robust only when the task reader is invariant over that set.
+
+A statistical bridge is then used to obtain a calibrated numerical envelope from observable refinement features. See [`theory/COVERAGE_TO_TASK_CERTIFICATE.md`](theory/COVERAGE_TO_TASK_CERTIFICATE.md).
+
+Conformal pose uncertainty itself is prior art. The research question here is the **use of a calibrated pose set as a downstream task stopping certificate for iterative refinement**.
+
+## Frozen learned-shape result
+
+The first frozen FINAL TEST was opened only after the learned-shape method and replacement final-test seeds were committed. Earlier development test seeds were retired and are recorded in the result lineage.
+
+Protocol:
 
 ```text
-top suction | label alignment | keyed insertion
+TRAIN        160 episodes
+CALIBRATION  160 episodes
+FINAL TEST   120 episodes
+STRESS        60 episodes (2x sensor noise)
+nominal marginal whole-trajectory coverage = 90%
 ```
 
-## Standard-profile result
+### In-distribution final test
 
-Held-out in-distribution test: 120 episodes; thresholds tuned on 96 separate episodes and checked on another 96 safety-calibration episodes.
+Observed whole-trajectory envelope coverage: **85.00%** (Wilson 95% CI 77.53%–90.30%).
 
-| Task | estimator mean k | task mean k | k_task < k_estimator | estimator completion | task completion | task HOLD |
-|---|---:|---:|---:|---:|---:|---:|
-| top suction | 14.033 | 10.292 | 92.50% | 94.17% | 93.33% | 6.67% |
-| label alignment | 14.033 | 10.550 | 90.83% | 93.33% | 91.67% | 6.67% |
-| keyed insertion | 14.033 | 11.542 | 90.00% | 92.50% | 90.83% | 9.17% |
+This is below the nominal 90% target and is reported as such. It must not be rewritten as “90% empirical coverage”.
 
-Paired bootstrap intervals for `k_task - k_estimator` are strictly below zero for all three in-distribution tasks in the frozen standard run. See [`results/NUMERICAL_RESULTS.md`](results/NUMERICAL_RESULTS.md).
+| Task | estimator mean k | completion mean k | `k_C < k_E` | estimator completion | completion-stop completion | HOLD | unsafe ACT |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| top suction | 13.500 | 10.350 | 90.00% | 95.00% | 92.50% | 7.50% | 0.00% |
+| label alignment | 13.500 | 10.900 | 87.50% | 92.50% | 91.67% | 8.33% | 0.00% |
+| keyed insertion | 13.500 | 11.750 | 87.50% | 90.00% | 90.00% | 10.00% | 0.00% |
 
-This is **not** a real RGB-D/GPU/robot benchmark. Wall-clock time is a machine-specific secondary readout.
+Frozen record: [`results/learned_conformal/STANDARD_RESULTS.md`](results/learned_conformal/STANDARD_RESULTS.md).
 
-## Failure boundary is part of the result
+On this runner, numerical latency also fell with the earlier stopping stage (16.60 ms estimator-stop versus 13.26 / 13.89 / 14.89 ms completion-stop), but these are machine-specific CPU numerical timings — **not GPU/robot speedups**.
 
-The same frozen gate is also tested under a declared `2x` sensor-noise shift. Top suction remains usable in this fixture, but label alignment loses substantial completion through HOLD and keyed insertion returns HOLD for every stress episode.
+## A useful negative result
 
-That negative result is deliberate: the repository does not hide distribution-shift failure behind success-conditional-on-ACT metrics.
+The simpler raw-proxy conformal construction achieved **95.83%** held-out whole-trajectory coverage in its frozen run but returned **HOLD for 100%** of episodes for all three tasks.
+
+That ablation establishes an important design constraint:
+
+```text
+coverage alone != useful stopping certificate
+```
+
+The set must be both:
+
+```text
+sufficiently covered
+AND
+sufficiently task-discriminative
+```
+
+The learned-shape model makes the set substantially more informative, but its first frozen final test observed only 85% trajectory coverage against a nominal 90% target. The coverage–utility problem therefore remains an empirical part of the paper rather than being hidden as an implementation detail.
+
+## Distribution-shift boundary
+
+Under 2x sensor noise, the learned envelope remained usable for top suction and label alignment in this numerical fixture, but keyed insertion returned HOLD for every stress episode.
+
+That failure is retained deliberately. A guarantee derived under exchangeability is not silently transferred to shifted conditions.
 
 ## Run it yourself
-
-### Fastest route
 
 Requires Python 3.10+.
 
@@ -69,27 +132,40 @@ python -m pip install -r requirements.txt
 python reproduce.py --profile quick
 ```
 
-Outputs are written to:
-
-```text
-artifacts/numerical/
-```
-
-For the frozen larger experiment:
+For the frozen-size numerical experiment:
 
 ```bash
 python reproduce.py --profile standard
 ```
 
-On a typical laptop the numerical standard profile is intended to finish in tens of seconds, not hours; timing depends on hardware.
+Outputs include:
+
+```text
+artifacts/numerical/
+artifacts/conformal-raw/
+artifacts/conformal-learned/
+```
 
 ## Automatic checks
 
-GitHub Actions independently reruns the numerical fixture on Linux, macOS, and Windows and uploads result artifacts. Tests include exact Kabsch recovery, pose identity, task switching, a coupled insertion counterexample, disjoint split seeds, no hidden-ground-truth argument in the gate interface, evidence-boundary checks, and glosa claim-card disclosure checks.
+GitHub Actions rebuilds the experiment on Linux, macOS, and Windows. A separate Ubuntu standard-evidence job runs the larger learned certificate and uploads the result record.
+
+Mechanical controls include:
+
+- exact Kabsch recovery and pose identity;
+- task-switch and coupled-task counterexamples;
+- no hidden-ground-truth object in the online gate signature;
+- disjoint TRAIN / CALIBRATION / FINAL TEST seeds;
+- retirement of development test seeds after they were inspected;
+- split-conformal order-statistic checks;
+- whole-trajectory rather than selected-stage calibration;
+- robust-PASS set-inclusion tests;
+- `unsafe_act_on_covered_episode_count == 0` for the implemented numerical readers;
+- glosa claim-card validation.
 
 ## Evidence discipline
 
-This repository applies the five-question / E-A-D discipline from **glosa — Rigour Without Infrastructure** to the research record:
+The repository applies the five-question / E-A-D discipline from **glosa — Rigour Without Infrastructure**:
 
 ```text
 Q1 what was actually seen/run?
@@ -107,22 +183,28 @@ Current evidence ceiling: **K1 public provisional / I4 mechanical-original-recor
 
 Supported now:
 
-- the public task-stop implementation runs on iterative numerical 6D registration;
-- on the frozen in-distribution numerical fixture, task-conditioned stopping often occurs earlier than the estimator criterion;
-- ACT, HOLD, unsafe ACT, completion, iterations, and timing are all reported;
-- distribution shift can erase the benefit or force HOLD.
+- a public iterative 6D numerical backend can be stopped by task-reader invariance over a calibrated completion set;
+- on the first frozen learned-shape final test, `k_C < k_E` occurs in 87.5–90% of episodes depending on task;
+- the implemented robust gate produced no unsafe ACTs in that numerical final test;
+- a naive high-coverage set can be operationally useless because it is too wide;
+- shifted conditions can force task-specific HOLD.
 
 Still open / HOLD:
 
-- real RGB-D or GPU acceleration;
-- FoundationPose-specific speedup;
+- empirical attainment of the nominal coverage target across repeated independent calibration/test draws;
+- real RGB-D coverage;
+- FoundationPose-specific or GPU speedup;
 - physical manipulation non-inferiority;
-- safety certification;
+- physical safety certification;
 - IDM-specific advantage.
 
-## Why IDM is not the headline
+## Prior-art boundary
 
-IDM remains an optional finite routing backend in the older rich-action diagnostic. It is not the novelty claim. The present research question is backend-independent: **estimator convergence is not the same condition as downstream task sufficiency.**
+The repository does **not** claim to invent task-aware perception, early stopping, conformal prediction, or conformal 6D pose uncertainty. Relevant prior work includes SPADE for task-relevant perception cost, conformal pose uncertainty by Yang & Pavone (CVPR 2023), deterministic conformal 6D confidence regions by Wang et al. (ICCV 2025), and estimator-side early stopping in AnyBox.
+
+The narrow candidate contribution is:
+
+> **coverage-qualified downstream task stopping of iterative 6D pose refinement: stop when the calibrated pose completion set has collapsed to one task-reader verdict, not merely when the estimator has converged.**
 
 ## Author
 
