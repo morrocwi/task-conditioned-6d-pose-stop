@@ -33,6 +33,11 @@ from pathlib import Path
 
 import numpy as np
 
+# Support both `python -m experiments.conformal_completion` and the public
+# README command `python experiments/conformal_completion.py`.
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 from experiments import numerical_icp as ni
 
 CAL_SEED = 2026090921
