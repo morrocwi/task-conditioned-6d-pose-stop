@@ -15,6 +15,10 @@ def main():
     run([sys.executable,'theory/completion_envelope.py'])
     run([sys.executable,'benchmark.py'])
     run([sys.executable,'experiments/numerical_icp.py','--profile',args.profile,'--out-dir','artifacts/numerical'])
-    print('\nReproduction complete. See artifacts/numerical/NUMERICAL_RESULTS.md and theory/TOLEDO_COMPLETION_ENVELOPE.md')
+    run([sys.executable,'experiments/conformal_completion.py','--profile',args.profile,'--out-dir','artifacts/conformal'])
+    print('\nReproduction complete.')
+    print('Numerical threshold results: artifacts/numerical/NUMERICAL_RESULTS.md')
+    print('Calibrated completion results: artifacts/conformal/CONFORMAL_COMPLETION_RESULTS.md')
+    print('Theory/status: theory/TOLEDO_COMPLETION_ENVELOPE.md')
 
 if __name__=='__main__': main()
