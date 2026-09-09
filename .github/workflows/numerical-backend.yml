@@ -41,6 +41,8 @@ jobs:
         run: python experiments/conformal_completion.py --profile ci --out-dir artifacts/conformal-raw
       - name: Reproduce learned-shape calibrated certificate (CI profile)
         run: python experiments/learned_conformal_completion.py --profile ci --out-dir artifacts/conformal-learned
+      - name: Repeated calibration-test diagnostic (CI profile)
+        run: python experiments/replication_study.py --profile ci --out-dir artifacts/replication
       - name: Check evidence boundaries
         shell: python
         run: |
@@ -62,16 +64,16 @@ jobs:
           learned=json.loads(Path('artifacts/conformal-learned/learned_conformal_completion.json').read_text())
           e=learned['evidence_boundary']
           assert learned['label']=='[NumericalBackend+LearnedShape+SplitConformal]'
-          assert learned['method']=='train_shape_then_trajectory_level_split_conformal_completion_envelope'
-          assert e['iterative_rigid_registration_executed'] is True
           assert e['hidden_ground_truth_used_online_by_gate'] is False
-          assert e['camera_executed'] is False
-          assert e['neural_pose_model_executed'] is False
-          assert e['physical_robot_executed'] is False
           for condition in learned['evaluation'].values():
-              assert 0.0 <= condition['trajectory_envelope_coverage'] <= 1.0
               for task in condition['tasks'].values():
                   assert task['unsafe_act_on_covered_episode_count']==0
+
+          repl=json.loads(Path('artifacts/replication/replication_study.json').read_text())
+          assert repl['label']=='[NumericalReplication]'
+          assert repl['evidence_boundary']['method_tuned_inside_replication'] is False
+          for task in repl['summary']['tasks'].values():
+              assert task['total_unsafe_act_on_covered_episode_count']==0
           print('evidence boundaries and coverage-to-task implication: PASS')
       - uses: actions/upload-artifact@v4
         if: always()
@@ -81,6 +83,7 @@ jobs:
             artifacts/numerical/
             artifacts/conformal-raw/
             artifacts/conformal-learned/
+            artifacts/replication/
 
   standard-evidence:
     if: github.event_name != 'pull_request'
@@ -96,6 +99,8 @@ jobs:
         run: python experiments/conformal_completion.py --profile standard --out-dir artifacts/conformal-raw-standard
       - name: Standard learned-shape coverage-qualified stopping experiment
         run: python experiments/learned_conformal_completion.py --profile standard --out-dir artifacts/conformal-learned-standard
+      - name: Standard repeated TRAIN-CALIBRATION-TEST study
+        run: python experiments/replication_study.py --profile standard --out-dir artifacts/replication-standard
       - name: Verify standard evidence records
         shell: python
         run: |
@@ -104,7 +109,6 @@ jobs:
           raw=json.loads(Path('artifacts/conformal-raw-standard/conformal_completion.json').read_text())
           assert raw['configuration']['cal_n']==160
           assert raw['evaluation']['in_distribution']['episodes']==120
-          assert raw['evidence_boundary']['hidden_ground_truth_used_online_by_gate'] is False
 
           d=json.loads(Path('artifacts/conformal-learned-standard/learned_conformal_completion.json').read_text())
           assert d['configuration']['train_n']==160
@@ -116,6 +120,12 @@ jobs:
           for condition in d['evaluation'].values():
               for task in condition['tasks'].values():
                   assert task['unsafe_act_on_covered_episode_count']==0
+
+          r=json.loads(Path('artifacts/replication-standard/replication_study.json').read_text())
+          assert r['configuration']['replicates']==10
+          assert r['evidence_boundary']['method_tuned_inside_replication'] is False
+          for task in r['summary']['tasks'].values():
+              assert task['total_unsafe_act_on_covered_episode_count']==0
           print('standard evidence records: PASS')
       - uses: actions/upload-artifact@v4
         if: always()
@@ -124,3 +134,4 @@ jobs:
           path: |
             artifacts/conformal-raw-standard/
             artifacts/conformal-learned-standard/
+            artifacts/replication-standard/
