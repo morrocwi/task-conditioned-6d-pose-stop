@@ -80,6 +80,7 @@ Adversarial regression tests retain the specific small-n, NaN, and n=1 inference
 7. **University lab harness** — backend-agnostic real-system interface (`lab/`).
 8. **Real-sensor ICP run (in-house, not independent)** — real BOP LM-O RGB-D data through a real numpy+scipy point-to-point ICP/Kabsch backend, via the `lab/` harness (`lab/results/real-bop-lmo-2026-09-09/`). This is a negative/falsifying result: see "Real-sensor evidence" below.
 9. **Second real-sensor ICP run, tolerance-rederivation cycle (in-house, not independent)** — same backend/dataset/split as run 8, task tolerances re-derived from TRAIN-split achievable accuracy instead of reused from the numerical fixture (`lab/results/real-bop-lmo-2026-09-09-run2/`). Same negative/falsifying result, and it rules out "the tolerances were just too tight" as the explanation: see "Real-sensor evidence" below.
+10. **Third real-sensor ICP run, Bonferroni-corrected multi-checkpoint certificate (in-house, not independent)** — same backend/dataset/split/tolerances as run 9, changes only the certificate-construction method: a NEW code path (`lab/multicheckpoint.py`, `cqts/safety.py`'s Bonferroni functions) restricted to K'=4 predeclared checkpoint stages, calibrated independently at `alpha/K'` (Toledo proposal PROP-CONF-03; union bound machine-checked in `~/ANSE.ASIA/toledo/coq/canonical/PROP_CONF_03_union_bound.v`), instead of the existing joint whole-trajectory construction (unchanged, still used by runs 8-9). Refutes the specific falsifiable prediction it was designed to test: per-checkpoint quantiles came out LARGER, not smaller, than the joint quantile, and the certificate rate stayed at 0%. See "Real-sensor evidence" below.
 
 The numerical research evidence uses generated point clouds. No camera, neural pose estimator, contact physics, or physical robot is silently implied by those results.
 
@@ -139,6 +140,37 @@ diagnosis at the calibrated-envelope-construction step (observable feature
 vector / conformal calibration) rather than at the tolerance numbers. Full
 accounting in
 [`lab/results/real-bop-lmo-2026-09-09-run2/RESULT.md`](lab/results/real-bop-lmo-2026-09-09-run2/RESULT.md).
+
+### Third real-sensor cycle: Bonferroni-corrected multi-checkpoint certificate (PROP-CONF-03)
+
+Run 2's own result pointed the diagnosis at the calibrated-envelope-CONSTRUCTION step rather than
+task tolerances. A diagnosis recorded in glosa
+(`~/ANSE.ASIA/glosa/projects/GLS-2026-005_pose-stop-conformal-diagnosis/DIAGNOSIS_HYPOTHESIS.md`)
+identified the joint whole-trajectory max-over-15-stages nonconformity score (C7/PROP-CONF-02) as
+the likely dominant driver of the ~7.4x envelope inflation (`q≈2.0008`, rank 37/40), and proposed a
+Bonferroni-corrected fix: restrict the certificate to K'=4 predeclared checkpoint stages
+(`{4,8,12,15}`, the largest feasible value at n=40 calibration episodes and alpha=0.1), each
+calibrated independently at `alpha/K'=0.025` via the same `safe_split_conformal_quantile` used by
+the existing construction, combined by a machine-checked union bound (Toledo proposal
+PROP-CONF-03, `~/ANSE.ASIA/toledo/coq/canonical/PROP_CONF_03_union_bound.v`). This is a NEW code
+path (`lab/multicheckpoint.py`; `lab/run_real_system.py --mode bonferroni_multicheckpoint`) — the
+existing joint whole-trajectory construction used by runs 1-2 is unchanged and unaffected.
+
+`lab/results/real-bop-lmo-2026-09-09-run3/` re-runs the identical dataset, split, ICP backend, and
+run 2's TRAIN-derived tolerances, varying only the certificate-construction method. Predeclared
+before FINAL TEST (`681c710`).
+
+**Result: the tested falsifiable prediction is REFUTED.** The four per-checkpoint quantiles
+(`q ∈ [2.085, 2.200]`) came out 4.3-10.0% LARGER than the joint whole-trajectory `q≈2.0008` used by
+runs 1-2, not smaller as predicted, and the certificate rate stayed at exactly 0% for all three
+tasks (100% HOLD), identical in kind to runs 1-2. The likely reason: splitting `alpha` four ways
+pushes each checkpoint's required calibration rank to `40/40` — the single largest of only 40
+calibration scores — and at this sample size that per-checkpoint Bonferroni penalty outweighs the
+stage-aggregation penalty it was designed to remove. This does not show the union-bound
+construction is incorrect (its own coverage guarantee, 97.5-100% all-checkpoints-covered against a
+90% target, held); it refutes the more specific quantitative prediction that this restriction would
+be numerically cheaper than the joint construction at n=40. Full accounting in
+[`lab/results/real-bop-lmo-2026-09-09-run3/RESULT.md`](lab/results/real-bop-lmo-2026-09-09-run3/RESULT.md).
 
 ## First frozen learned-shape final test
 

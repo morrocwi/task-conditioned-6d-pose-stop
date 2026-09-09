@@ -165,6 +165,50 @@ Implemented as `cqts/safety.py::safe_exp_error_bound`.
 This is the executable form of "the set of pose errors that current evidence plus calibration
 still permits."
 
+### C9b — Bonferroni-corrected multi-checkpoint alternative to C7 (implemented, extends C7–C9)
+
+An extension of the C7–C9 mechanism above, not part of the C21–C26 active-perception proposal
+below: instead of one joint nonconformity score maxed over all K stages AND 6 coordinates (C7),
+restrict certificate checks to K' predeclared checkpoint stages `k_1,...,k_{K'}` and calibrate each
+independently:
+
+```
+A_{j,k_m} = max_{i≤6} [ log(|e_{j,k_m,i}| + δ_i) − log(s_{j,k_m,i}) ]         (coordinate-max only)
+
+q_{k_m} = SplitConformalQuantile({A_{j,k_m}}_{j=1}^n, α/K')                    (same C8 order statistic)
+```
+
+then build the envelope at each checkpoint exactly as C9 (`b_{k_m,i} = exp(log s_{k_m,i} + q_{k_m}) − δ_i`).
+By the union bound (Boole's inequality), `P(any of the K' checkpoints miscovers) ≤ Σ α/K' = α`, so
+the combined per-checkpoint constructions give the same `≥ 1−α` whole-trajectory coverage guarantee
+as the joint C7 construction, without its 15-way stage-aggregation term. Feasibility requires
+`ceil((n+1)(1-α/K')) ≤ n`; for this repository's real-data runs (n=40, α=0.1) this gives K'≤4
+feasible, K'=5 already forcing `q=+∞` at every checkpoint.
+
+Registered in Toledo as proposal **PROP-CONF-03**
+(`~/ANSE.ASIA/toledo/registry/proposals/conformal_stopping_family.json`; C7/C8 above correspond to
+retroactively-registered **PROP-CONF-01/02**). The union-bound combination step is machine-checked,
+axiom-free, over ℚ: `~/ANSE.ASIA/toledo/coq/canonical/PROP_CONF_03_union_bound.v`
+(`finite_union_bound`, `bonferroni_checkpoints`, both `Print Assumptions` = "Closed under the
+global context"). The per-checkpoint split-conformal exchangeability guarantee it composes (C8 at
+level α/K') is cited from standard conformal-prediction theory, not itself re-derived here.
+
+Implemented as a NEW code path (`lab/multicheckpoint.py`,
+`cqts/safety.py::safe_multi_checkpoint_quantiles` / `bonferroni_feasible_max_checkpoints` /
+`bonferroni_checkpoint_alpha`), additive alongside the unmodified joint C7–C9 construction so
+existing results stay reproducible (`lab/run_real_system.py --mode whole_trajectory` vs.
+`--mode bonferroni_multicheckpoint`). Executed once, on real BOP LM-O data, in
+`lab/results/real-bop-lmo-2026-09-09-run3/` (diagnosis: `~/ANSE.ASIA/glosa/projects/GLS-2026-005_pose-stop-conformal-diagnosis/DIAGNOSIS_HYPOTHESIS.md`).
+Result: **the falsifiable prediction that this construction's `q_{k_m}` would be smaller than the
+joint C7 construction's `q≈2.0008` was refuted** — the four checkpoints' quantiles (`q ∈ [2.085,
+2.200]`) came out 4.3–10.0% larger, because at n=40 calibration episodes every checkpoint's
+Bonferroni-corrected rank lands at `40/40` (the single largest calibration score), and that
+per-checkpoint penalty outweighed the removed stage-aggregation term. The construction's own
+coverage guarantee held (all-checkpoints-covered rate 97.5% against a 90% target); what is refuted
+is the specific quantitative prediction that it would be cheaper than C7 at this sample size, not
+the union-bound argument itself. See `lab/results/real-bop-lmo-2026-09-09-run3/RESULT.md` for full
+accounting.
+
 ---
 
 ## Part II — Verification / Decision (implemented, C11–C20)
