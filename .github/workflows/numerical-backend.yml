@@ -71,3 +71,32 @@ jobs:
           path: |
             artifacts/numerical/
             artifacts/conformal/
+
+  standard-evidence:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - name: Standard trajectory-calibrated completion experiment
+        run: python experiments/conformal_completion.py --profile standard --out-dir artifacts/conformal-standard
+      - name: Verify standard evidence record
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          d=json.loads(Path('artifacts/conformal-standard/conformal_completion.json').read_text())
+          assert d['configuration']['cal_n']==160
+          assert d['evaluation']['in_distribution']['episodes']==120
+          assert d['evaluation']['stress_2x_sensor_noise']['episodes']==60
+          assert d['evidence_boundary']['hidden_ground_truth_used_online_by_gate'] is False
+          print('standard evidence record: PASS')
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: conformal-standard-ubuntu
+          path: artifacts/conformal-standard/
