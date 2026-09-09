@@ -182,17 +182,123 @@ unless the construction of the finite set has an independently justified coverag
 
 ---
 
-## Pose-specific executable envelope
+## Calibration-derived completion envelope
 
-The current public harness represents unresolved local pose error by a symmetric box
+The previous equations say what a completion set *means*. They do not yet say how a numerical system should obtain one from an imperfect observable proxy. The next construction adds that bridge.
+
+The statistical basis is split conformal prediction: under exchangeability, a calibration-set order statistic can provide finite-sample marginal coverage for a new exchangeable unit. This project uses one score per **whole refinement episode**, rather than one score per adaptively selected stage, so that coverage is attached to the retained trajectory as the unit being calibrated. This statistical result is external to Toledo; the equations below are project-specific applications.
+
+### Eq. C7 — trajectory nonconformity score
+
+**[NEW–DEFINITION; EXTERNAL-METHOD BASIS: split conformal prediction]**
+
+Let `p_{e,k,i}` be the observable uncertainty proxy for episode `e`, refinement stage `k`, and local pose coordinate `i`. Let `epsilon_i>0` be a declared numerical floor. During offline calibration only, let the hidden evaluation error be `e_{e,k,i}`. Define one score per episode:
 
 \[
-|e_i|\le b_i.
+\boxed{
+A_e
+=
+\max_{k\le K}\max_{i\le 6}
+\frac{|e_{e,k,i}|}{p_{e,k,i}+\epsilon_i}.
+}
 \]
 
-It enumerates the box vertices and applies the declared downstream task reader to each vertex. This is exact for the monotone absolute-value toy readers currently implemented (coordinate box tolerances and the keyed-insertion L1 reader), but is not asserted to be exact for arbitrary robot tasks.
+The maximum over stages is deliberate. It avoids silently treating the stage chosen later by an adaptive stopping rule as though it were an independently calibrated sample.
 
-This construction creates a direct test of the distinction:
+### Eq. C8 — frozen calibration scale
+
+**[NEW–DERIVATION/PROPOSAL; EXTERNAL-METHOD BASIS: split conformal order statistic]**
+
+For `n` exchangeable calibration episodes and target miscoverage `alpha`, sort the episode scores
+
+\[
+A_{(1)}\le\cdots\le A_{(n)}
+\]
+
+and define
+
+\[
+\boxed{
+\widehat q_{1-\alpha}
+=
+A_{(r)},
+\qquad
+r=\min\{n,\lceil(n+1)(1-\alpha)\rceil\}.
+}
+\]
+
+The scale is frozen before held-out evaluation.
+
+### Eq. C9 — calibrated trajectory completion box
+
+**[NEW–DERIVATION/PROPOSAL]**
+
+At deployment stage `k`, the gate sees the observable proxy but not hidden pose error. It constructs axis bounds
+
+\[
+\boxed{
+b_{k,i}
+=
+\widehat q_{1-\alpha}(p_{k,i}+\epsilon_i)
+}
+\]
+
+and the retained completion box
+
+\[
+\boxed{
+\widehat{\mathcal C}^{\,cal}_k
+=
+\{e:\;|e_i|\le b_{k,i}\;\forall i\}.
+}
+\]
+
+Under the exchangeability assumptions required by split conformal prediction, the episode-level construction targets marginal coverage of the complete retained trajectory, not certainty about the hidden world.
+
+### Eq. C10 — coverage-qualified task stop
+
+**[NEW–DERIVATION/PROPOSAL]**
+
+The online task decision is
+
+\[
+\boxed{
+D_{T,k}=
+\begin{cases}
+ACT,&O_T(e)=PASS\quad\forall e\in\widehat{\mathcal C}^{cal}_k,\\
+CONTINUE,&\text{otherwise and refinement remains available},\\
+HOLD,&\text{otherwise}.
+\end{cases}
+}
+\]
+
+The decisive non-collapse is
+
+\[
+\boxed{
+\text{conformal marginal coverage}
+\neq
+\text{deterministic safety guarantee}.
+}
+\]
+
+Distribution shift, non-exchangeability, an inadequate proxy, or an incorrect downstream task reader can invalidate the practical meaning of the completion envelope even when the code implements the order statistic correctly.
+
+---
+
+## Pose-specific executable envelope
+
+The public harness now contains two implementations.
+
+1. `theory/completion_envelope.py` uses a manually declared symmetric box and finite vertex enumeration.
+2. `experiments/conformal_completion.py` derives the box scale from disjoint trajectory-level calibration episodes and evaluates the frozen envelope on held-out numerical ICP/Kabsch trajectories.
+
+For the monotone absolute-value readers currently implemented, robust PASS can be checked exactly from the axis bounds:
+
+- box task: every task-relevant bound is within its tolerance;
+- keyed-insertion L1 task: the sum of normalized task-relevant bounds is at most one.
+
+This creates a direct test of the distinction:
 
 ```text
 pose not known exactly
@@ -200,13 +306,19 @@ pose not known exactly
 task verdict unresolved
 ```
 
-A wide yaw envelope can remain PASS for top suction while producing HOLD for label alignment. Shrinking only yaw can move label alignment from HOLD to PASS.
+A wide yaw envelope can remain PASS for top suction while producing HOLD for label alignment. Shrinking yaw can move label alignment from HOLD to PASS.
 
 ## Claim boundary
 
-- The equations C1–C6 are **new definitions/derivations for this project**.
+- Equations C1–C10 are **new definitions/derivations for this project**.
 - They are rooted in Toledo's retained-state, domain-weld, reader-preservation, and reader-equivalence anchors.
-- They do not establish a probability distribution over the latent pose.
-- They do not convert ignorance into stochastic ontology.
-- A finite completion set is a retained computational readout, not the hidden world.
-- Real coverage, transition accuracy, and manipulation validity remain empirical questions.
+- C7–C10 additionally use split-conformal calibration as an external statistical method; conformal prediction is not a Toledo result and is not claimed as novel here.
+- The completion envelope does not establish a probability distribution over latent pose states.
+- It does not convert ignorance into stochastic ontology.
+- A calibrated finite envelope is a retained computational readout, not the hidden world.
+- Exchangeability is an assumption that must be stress-tested rather than presumed.
+- Real RGB-D coverage, transition accuracy, manipulation validity, and physical safety remain empirical questions.
+
+## External statistical reference
+
+Angelopoulos, A. N., & Bates, S. (2021). *A Gentle Introduction to Conformal Prediction and Distribution-Free Uncertainty Quantification*. arXiv:2107.07511.
