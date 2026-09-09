@@ -274,3 +274,10 @@ nonconformity score (coordinate-max only, no stage-aggregation) at level alpha/K
 PROP-CONF-03. This is a NEW code path (do not touch the existing C7-C9 joint construction used by
 runs 1-2 -- keep both, so run 1/2 remain reproducible), predeclared and frozen before opening final
 test, same discipline as run 2.
+
+## Third real-data cycle launched, 2026-09-09
+Building the Bonferroni-corrected multi-checkpoint fix (K'<=4, coordinate-max-only
+nonconformity per checkpoint, cqts/safety.py's existing quantile function reused) as a NEW code
+path alongside the existing whole-trajectory one (runs 1-2 stay reproducible). Will predeclare
+config before final test, run on the identical BOP-LMO split, report per-checkpoint q vs the old
+q~2.0008, update theory/FORMALIZATION_v1.md and GLS-2026-005's diagnosis with the outcome.
