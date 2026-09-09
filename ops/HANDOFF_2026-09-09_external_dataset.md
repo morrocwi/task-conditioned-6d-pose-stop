@@ -281,3 +281,34 @@ nonconformity per checkpoint, cqts/safety.py's existing quantile function reused
 path alongside the existing whole-trajectory one (runs 1-2 stay reproducible). Will predeclare
 config before final test, run on the identical BOP-LMO split, report per-checkpoint q vs the old
 q~2.0008, update theory/FORMALIZATION_v1.md and GLS-2026-005's diagnosis with the outcome.
+
+## Third real-data cycle executed, 2026-09-09: prediction refuted
+
+Implemented `lab/multicheckpoint.py` + `cqts/safety.py::safe_multi_checkpoint_quantiles` /
+`bonferroni_feasible_max_checkpoints` / `bonferroni_checkpoint_alpha` (PROP-CONF-03), additive
+alongside the unmodified whole-trajectory path used by runs 1-2 (`lab/run_real_system.py --mode
+whole_trajectory` vs `--mode bonferroni_multicheckpoint`). Full test suite (68 tests, including
+new adversarial cases confirming K'=5 at n=40 fails closed to q=+infinity at every checkpoint)
+passes.
+
+Predeclared K'=4, checkpoints={4,8,12,15} (the largest feasible value per
+`bonferroni_feasible_max_checkpoints(40,0.1)==4`), reusing run2's identical BOP-LMO data/split/ICP
+backend and run2's TRAIN-derived tolerances unchanged, so the certificate-construction method is
+the only varied factor. Frozen config/rationale committed (`681c710`,
+2026-09-09T14:32:42+07:00) before `lab/run_real_system.py` was invoked against `test.jsonl` for
+this run (invoked 2026-09-09T14:32:49+07:00, `lab_results.json` committed separately,
+`a9a9a6a`). RATIONALE.md discloses one incidental smoke-test invocation against the real test
+split during code development (no free parameter subsequently changed in response to it).
+
+**Result: the falsifiable prediction is REFUTED.** The four per-checkpoint quantiles (q in
+[2.085, 2.200]) came out 4.3-10.0% LARGER than the joint whole-trajectory q~2.0008 from runs 1-2,
+not smaller. Certificate rate stayed at exactly 0.0 for all three tasks (100% HOLD), identical in
+kind to runs 1-2. Likely cause: at n=40 calibration episodes, every checkpoint's
+Bonferroni-corrected rank lands at 40/40 (the single largest calibration score), and this
+per-checkpoint penalty outweighs the stage-aggregation penalty the construction removes. The
+union-bound coverage guarantee itself held (all-checkpoints-covered rate 97.5% against a 90%
+target) -- what is refuted is the specific quantitative prediction that this construction would
+be cheaper than the joint one at this sample size, not the union-bound argument. Full detail:
+`lab/results/real-bop-lmo-2026-09-09-run3/RESULT.md`. CLAIMS.md, README.md, and
+theory/FORMALIZATION_v1.md (new C9b subsection) updated accordingly. GLS-2026-005's diagnosis in
+glosa updated with the same outcome, its own commit in that repo.
