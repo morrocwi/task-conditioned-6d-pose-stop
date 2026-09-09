@@ -37,8 +37,10 @@ jobs:
           python theory/completion_envelope.py
       - name: Reproduce numerical backend (CI profile)
         run: python experiments/numerical_icp.py --profile ci --out-dir artifacts/numerical
-      - name: Reproduce calibrated completion envelope (CI profile)
-        run: python experiments/conformal_completion.py --profile ci --out-dir artifacts/conformal
+      - name: Reproduce raw-proxy calibrated envelope ablation (CI profile)
+        run: python experiments/conformal_completion.py --profile ci --out-dir artifacts/conformal-raw
+      - name: Reproduce learned-shape calibrated certificate (CI profile)
+        run: python experiments/learned_conformal_completion.py --profile ci --out-dir artifacts/conformal-learned
       - name: Check evidence boundaries
         shell: python
         run: |
@@ -53,24 +55,32 @@ jobs:
           assert b['neural_pose_model_executed'] is False
           assert b['physical_robot_executed'] is False
 
-          c=json.loads(Path('artifacts/conformal/conformal_completion.json').read_text())
-          e=c['evidence_boundary']
-          assert c['label']=='[NumericalBackend+SplitCalibration]'
-          assert c['method']=='trajectory_level_split_conformal_completion_envelope'
+          raw=json.loads(Path('artifacts/conformal-raw/conformal_completion.json').read_text())
+          assert raw['label']=='[NumericalBackend+SplitCalibration]'
+          assert raw['evidence_boundary']['hidden_ground_truth_used_online_by_gate'] is False
+
+          learned=json.loads(Path('artifacts/conformal-learned/learned_conformal_completion.json').read_text())
+          e=learned['evidence_boundary']
+          assert learned['label']=='[NumericalBackend+LearnedShape+SplitConformal]'
+          assert learned['method']=='train_shape_then_trajectory_level_split_conformal_completion_envelope'
           assert e['iterative_rigid_registration_executed'] is True
           assert e['hidden_ground_truth_used_online_by_gate'] is False
           assert e['camera_executed'] is False
           assert e['neural_pose_model_executed'] is False
           assert e['physical_robot_executed'] is False
-          assert 0.0 <= c['evaluation']['in_distribution']['trajectory_envelope_coverage'] <= 1.0
-          print('evidence boundaries: PASS')
+          for condition in learned['evaluation'].values():
+              assert 0.0 <= condition['trajectory_envelope_coverage'] <= 1.0
+              for task in condition['tasks'].values():
+                  assert task['unsafe_act_on_covered_episode_count']==0
+          print('evidence boundaries and coverage-to-task implication: PASS')
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: numerical-backend-${{ matrix.os }}
           path: |
             artifacts/numerical/
-            artifacts/conformal/
+            artifacts/conformal-raw/
+            artifacts/conformal-learned/
 
   standard-evidence:
     if: github.event_name != 'pull_request'
@@ -82,21 +92,35 @@ jobs:
           python-version: '3.11'
           cache: pip
       - run: python -m pip install -r requirements.txt
-      - name: Standard trajectory-calibrated completion experiment
-        run: python experiments/conformal_completion.py --profile standard --out-dir artifacts/conformal-standard
-      - name: Verify standard evidence record
+      - name: Standard raw-proxy calibration ablation
+        run: python experiments/conformal_completion.py --profile standard --out-dir artifacts/conformal-raw-standard
+      - name: Standard learned-shape coverage-qualified stopping experiment
+        run: python experiments/learned_conformal_completion.py --profile standard --out-dir artifacts/conformal-learned-standard
+      - name: Verify standard evidence records
         shell: python
         run: |
           import json
           from pathlib import Path
-          d=json.loads(Path('artifacts/conformal-standard/conformal_completion.json').read_text())
+          raw=json.loads(Path('artifacts/conformal-raw-standard/conformal_completion.json').read_text())
+          assert raw['configuration']['cal_n']==160
+          assert raw['evaluation']['in_distribution']['episodes']==120
+          assert raw['evidence_boundary']['hidden_ground_truth_used_online_by_gate'] is False
+
+          d=json.loads(Path('artifacts/conformal-learned-standard/learned_conformal_completion.json').read_text())
+          assert d['configuration']['train_n']==160
           assert d['configuration']['cal_n']==160
           assert d['evaluation']['in_distribution']['episodes']==120
           assert d['evaluation']['stress_2x_sensor_noise']['episodes']==60
           assert d['evidence_boundary']['hidden_ground_truth_used_online_by_gate'] is False
-          print('standard evidence record: PASS')
+          assert set(d['lineage']['final_test_seeds']).isdisjoint(set(d['lineage']['previous_development_test_seeds_not_reused']))
+          for condition in d['evaluation'].values():
+              for task in condition['tasks'].values():
+                  assert task['unsafe_act_on_covered_episode_count']==0
+          print('standard evidence records: PASS')
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: conformal-standard-ubuntu
-          path: artifacts/conformal-standard/
+          name: completion-standard-ubuntu
+          path: |
+            artifacts/conformal-raw-standard/
+            artifacts/conformal-learned-standard/
