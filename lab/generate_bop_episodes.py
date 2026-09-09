@@ -48,7 +48,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from lab.adapter_bop import export_episode, export_episode_decay, mark_estimator_stop
+from lab.adapter_bop import export_episode, export_episode_decay, export_episode_native, mark_estimator_stop
 from lab.bop_icp_backend import load_ply_vertices_m, perturb_pose, run_icp, subsample_points
 
 DATA_DIR = ROOT / "lab" / "data" / "bop_lmo"
@@ -60,6 +60,10 @@ OUT_DIR = ROOT / "lab" / "data" / "bop_lmo_episodes"
 # stage). Selected with --variant decay; default (no args, as run1-3 always
 # invoked this script) is byte-identical to the original behavior.
 OUT_DIR_DECAY = ROOT / "lab" / "data" / "bop_lmo_episodes_decay"
+# run5 (PROP-NATIVE-01/02): identical data/frames/seeds/ICP as above, written
+# to a SEPARATE output directory via export_episode_native (extra "native"
+# field per stage carrying H_k + T_hat_k). Selected with --variant native.
+OUT_DIR_NATIVE = ROOT / "lab" / "data" / "bop_lmo_episodes_native"
 
 OBJECT_IDS = [1, 8]
 N_FRAMES_TOTAL = 60
@@ -99,8 +103,8 @@ def frame_mask_index(gt_frame, obj_id):
 def main(variant: str = "standard"):
     from PIL import Image
 
-    export_fn = export_episode_decay if variant == "decay" else export_episode
-    out_dir = OUT_DIR_DECAY if variant == "decay" else OUT_DIR
+    export_fn = {"decay": export_episode_decay, "native": export_episode_native}.get(variant, export_episode)
+    out_dir = {"decay": OUT_DIR_DECAY, "native": OUT_DIR_NATIVE}.get(variant, OUT_DIR)
 
     scene_gt = load_json(SCENE_DIR / "scene_gt.json")
     scene_cam = load_json(SCENE_DIR / "scene_camera.json")
@@ -188,6 +192,6 @@ def main(variant: str = "standard"):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--variant", choices=["standard", "decay"], default="standard")
+    parser.add_argument("--variant", choices=["standard", "decay", "native"], default="standard")
     args = parser.parse_args()
     main(args.variant)

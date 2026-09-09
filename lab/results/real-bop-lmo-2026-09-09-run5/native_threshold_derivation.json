@@ -1,0 +1,29 @@
+{
+  "n_train_episodes": 40,
+  "n_stage_readings": 640,
+  "lambda_min_summary": {
+    "min": 0.1235465514192054,
+    "p25": 0.16321207181123104,
+    "median": 0.33927484832749355,
+    "p75": 0.6895654421029127,
+    "max": 1.081398464427008
+  },
+  "local_dispersion_proxy_norm_summary": {
+    "min": 0.015165680389150168,
+    "p25": 0.020176205696182538,
+    "median": 0.026799546208704794,
+    "p75": 0.03274911721483188,
+    "p90": 0.041290797317630586,
+    "max": 0.08216764278522164
+  },
+  "lambda_ref": 0.33927484832749355,
+  "lambda_ref_method": "median(lambda_min(H_k)) over every TRAIN stage",
+  "cap": 0.03274911721483188,
+  "cap_method": "p75(||local_dispersion_proxy||) over every TRAIN stage",
+  "c_scale": 0.011110951775921396,
+  "perturbation_magnitude_rule": "m_j = min(c_scale / lambda_min(H_k), cap)",
+  "discarded_candidate_cap": {
+    "value": 0.005,
+    "reason_discarded": "CALIBRATION-only diagnostic showed this hand-picked round number sits below every task tolerance component, making the invariance test structurally vacuous (trivial ACT at k=0 on effectively every episode, independent of any real signal)"
+  }
+}

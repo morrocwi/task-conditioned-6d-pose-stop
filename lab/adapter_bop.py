@@ -131,6 +131,53 @@ def export_episode_decay(episode_id, backend_stages, ground_truth_pose, output_f
         f.write(json.dumps(row) + "\n")
 
 
+def native_sensitivity_stage_fields(stage: ICPStage) -> dict:
+    """Per-stage fields for the fifth real-data cycle's native retained-
+    sensitivity model (PROP-NATIVE-01/02, lab/native_sensitivity.py). No
+    ground truth is referenced. `hessian` is the raw 6x6 ICP normal-equations
+    Hessian H_k = J^T J, flattened row-major (36 floats) -- the SAME matrix
+    `lab/decay_predictor.py:kappa_rho_from_H` already consumes, just exposed
+    in full here (that function only returns two scalar eigenvalue extremes,
+    not the eigenvectors this cycle's decision rule needs). `R`/`t` are the
+    estimator's OWN current pose estimate T_hat_k (not ground truth -- exactly
+    what an online controller already has access to at this stage), needed to
+    apply a perturbation and re-express it as an SE(3) pose difference via
+    lab/se3.py.
+    """
+    if stage.hessian is None:
+        raise ValueError("native_sensitivity_stage_fields requires stage.hessian (see normal_equations_H)")
+    return {
+        "k": int(stage.k),
+        "hessian": [float(x) for x in np.asarray(stage.hessian, dtype=float).reshape(-1)],
+        "R": [[float(x) for x in row] for row in stage.R],
+        "t": [float(x) for x in stage.t],
+    }
+
+
+def export_episode_native(episode_id, backend_stages, ground_truth_pose, output_file):
+    """Same as export_episode() (kept byte-for-byte reproducible for runs
+    1-4), plus a "native" field per stage carrying the fifth-cycle fields
+    above. Used only by lab/generate_bop_episodes.py's --variant native
+    (run5); does not touch export_episode, export_episode_decay, or any
+    run1-4 data files.
+    """
+    stages = []
+    errors = []
+    K = len(backend_stages) - 1
+    for k, stage in enumerate(backend_stages):
+        stages.append({
+            "k": k,
+            "features": [float(x) for x in observable_features(stage)],
+            "incremental_ms": float(incremental_ms(stage)),
+            "estimator_stop": bool(estimator_stop(stage)),
+            "native": native_sensitivity_stage_fields(stage),
+        })
+        errors.append([float(x) for x in abs_pose_error_6d((stage.R, stage.t), ground_truth_pose)])
+    row = {"episode_id": str(episode_id), "stages": stages, "oracle": {"abs_pose_error_6d": errors}}
+    with Path(output_file).open("a", encoding="utf-8") as f:
+        f.write(json.dumps(row) + "\n")
+
+
 def export_episode(episode_id, backend_stages, ground_truth_pose, output_file):
     stages = []
     errors = []

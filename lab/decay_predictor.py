@@ -99,6 +99,31 @@ def kappa_rho_from_H(H: np.ndarray, singular_rtol: float = 1e-9) -> KappaRho:
     return KappaRho(lam_min, lam_max, float(kappa), float(rho), False)
 
 
+def eigh_H(H: np.ndarray):
+    """Full real eigendecomposition of a 6x6 ICP normal-equations Hessian.
+
+    Additive (fifth real-data cycle, PROP-NATIVE-01/02, "native retained-
+    sensitivity model" -- ops/HANDOFF_2026-09-09_external_dataset.md, "Fifth
+    cycle authorized"). `kappa_rho_from_H` above only ever returned the two
+    extreme eigenvalues as scalars; this run needs the full eigenpairs
+    (eigenvector directions, not just their extremes) to perturb a pose
+    estimate along H_k's own least-constrained direction(s). Reuses the SAME
+    symmetrization H = (H + H.T)/2 as `kappa_rho_from_H` (float round-off
+    cleanup only, no other change to H), then calls `numpy.linalg.eigh`
+    (the symmetric/Hermitian-specialized sibling of the `eigvalsh` already
+    used above) so eigenvalues and eigenvectors come from the identical
+    numerical routine family -- not a different, independently-written
+    decomposition. Returns (eigvals, eigvecs) with eigvals ascending and
+    eigvecs[:, i] the unit eigenvector for eigvals[i], exactly numpy's own
+    `eigh` convention (no re-sorting is needed: `eigh` already returns
+    ascending order for a real symmetric input).
+    """
+    H = np.asarray(H, dtype=float)
+    H = 0.5 * (H + H.T)
+    eigvals, eigvecs = np.linalg.eigh(H)
+    return eigvals, eigvecs
+
+
 def correspondence_graph_n_and_diameter(points: np.ndarray, k_nn: int = 6) -> dict:
     """Diagnostic only (see module docstring): n = number of inlier
     correspondence points, D = unweighted BFS diameter of a symmetrized k-NN

@@ -1,0 +1,155 @@
+{
+  "_predeclaration_note": "run5 (2026-09-09, fifth real-data cycle, PROP-NATIVE-01/02 -- ~/ANSE.ASIA/toledo/registry/proposals/native_retained_sensitivity.json, H3). This file, split_manifest.json, RATIONALE.md, and native_threshold_derivation.json are committed in their OWN commit, BEFORE lab/run_native_sensitivity.py is invoked against test.jsonl for run5. This is a GENUINELY DIFFERENT decision mechanism from runs 1-4 (lab/native_sensitivity.py): no fitted error-shape model, no calibrated completion set, no conformal quantile, and no comparison against a task tolerance via a predicted/derived error bound. ACT is licensed only if cqts.safety.fail_closed_task_pass gives the SAME verdict for T_hat_k and T_hat_k perturbed along H_k's own single smallest eigenvalue direction (both signs), by a magnitude m=min(C/lambda_min, CAP). lambda_ref (median TRAIN lambda_min) and cap (p75 TRAIN local-dispersion-proxy Euclidean norm) are both derived from TRAIN-split data only -- see RATIONALE.md and native_threshold_derivation.json for the full method and the honest record of an earlier candidate cap that was found (via CALIBRATION-only diagnostics, never test) to make the invariance test structurally vacuous. No calibration/test statistic was inspected before this commit. Dataset/split/ICP backend/task tolerances/error_floor/alpha/inference are all reused BYTE-IDENTICAL from run2/run3/run4 -- only the decision mechanism varies. Data files (lab/data/bop_lmo_episodes_native/{train,calibration,test}.jsonl) are regenerated from the SAME frames/seeds/ICP as run1-4 (confirmed byte-identical split_manifest.json splits), with 'features'/'incremental_ms'/'estimator_stop' unchanged and one added 'native' field per stage (H_k flattened + T_hat_k) replacing run4's 'decay' field; the original run1-4 data files and code paths are untouched and remain independently reproducible.",
+  "backend": {
+    "name": "in-repo numpy+scipy point-to-point ICP/Kabsch (lab/bop_icp_backend.py)",
+    "version_commit": "task-conditioned-6d-pose-stop @ ed8735ad04c17efe1d1bc0a0cec4625071d2bdbb",
+    "model_weights": "none (no learned model; closed-form SVD/Kabsch rigid-transform update each iteration)",
+    "note": "Backend gains one additive per-stage export (lab/adapter_bop.py:export_episode_native, native_sensitivity_stage_fields) exposing H_k and T_hat_k=(R_k,t_k); the Kabsch closed-form update itself is unchanged (same as run4). This run5 config/freeze commit is built on top of the theory/CONTINUUM_AUDIT_20260909.md commit (parent of this file's own commit)."
+  },
+  "dataset": {
+    "name": "BOP LineMOD-Occlusion (LM-O) test_bop19 subset, scene 000002",
+    "source": "https://huggingface.co/datasets/bop-benchmark/lmo (lmo_base.zip, lmo_models.zip, lmo_test_bop19.zip)",
+    "objects": [
+      1,
+      8
+    ],
+    "object_names": {
+      "1": "ape",
+      "8": "driller"
+    },
+    "frame_prefilter": "frames dropped from the sampling pool if either object has fewer than 300 mask_visib pixels with a nonzero real depth reading (real sensor dropout / heavy occlusion), applied before any random draw",
+    "frames_in_pool_after_prefilter": 177,
+    "frame_draw": "60 frames drawn without replacement from the prefiltered pool, numpy Generator seed 20260909",
+    "frame_split": "60 drawn frames permuted (numpy Generator seed 20260909) and cut 20/20/20 into TRAIN/CALIBRATION/FINAL TEST; all episodes (both objects) from one frame land in exactly one split",
+    "episode_definition": "one (frame, object) pair",
+    "episodes_per_split": {
+      "train": 40,
+      "calibration": 40,
+      "test": 40
+    },
+    "independent_sampling_unit": "frame (not object-episode): the true number of independent draws is 60 frames, split 20/20/20; the two per-frame object episodes share the same depth-noise realization and are therefore not treated as independent units by the split rule",
+    "object_segmentation": "dataset-provided ground-truth mask_visib for the target object in each frame; no online detector/segmentation network is executed -- this experiment tests the REFINEMENT stage only, not detection/segmentation",
+    "initial_pose": "documented bounded random perturbation of real ground truth (lab/bop_icp_backend.py:perturb_pose): translation += isotropic Gaussian noise sigma=15mm per axis; rotation = random-axis rotation with angle ~ Uniform[5,20] degrees composed with ground-truth rotation. This simulates a coarse detector stage; it is not a full autonomous detection pipeline.",
+    "ground_truth_orthonormalization": "BOP cam_R_m2c matrices are not exactly orthonormal at float precision (observed residual up to ~3e-4); both ground-truth and estimated rotations are projected to the nearest proper rotation via SVD (lab/bop_icp_backend.py:orthonormalize) before oracle error computation, applied identically to both."
+  },
+  "estimator_side_stopping_rule": "two consecutive ICP stages with |delta_t| <= 0.5mm and |delta_r| <= 0.1deg (lab/bop_icp_backend.py:estimator_converged); if never satisfied within the 15-iteration budget, lab/run_real_system.py's estimator_index() falls back to the terminal stage",
+  "refinement_budget_max_iter": 15,
+  "observable_feature_vector": [
+    "k (stage index)",
+    "log(ICP residual RMSE + 1e-9)",
+    "inlier_fraction (correspondences within 3x median distance)",
+    "log(|translation update| + 1e-9)",
+    "log(|rotation update| + 1e-9)",
+    "log(n_correspondences + 1)",
+    "log(local dispersion proxy tx sd + 1e-9)",
+    "log(local dispersion proxy ty sd + 1e-9)",
+    "log(local dispersion proxy tz sd + 1e-9)",
+    "log(local dispersion proxy rx sd + 1e-9)",
+    "log(local dispersion proxy ry sd + 1e-9)",
+    "log(local dispersion proxy rz sd + 1e-9)"
+  ],
+  "bootstrap_repeats": 5000,
+  "timing_mode": "trajectory_prefix_estimate",
+  "timing_mode_reason": "incremental_ms is real measured per-iteration wall-clock (cKDTree query + Kabsch SVD), but no separate online_policy_measured dual-policy execution was run; a latency-reduction PASS is therefore deliberately disabled by this timing_mode, matching lab/README.md section 5/7",
+  "error_floor": [
+    1e-05,
+    1e-05,
+    1e-05,
+    0.0001,
+    0.0001,
+    0.0001
+  ],
+  "inference": {
+    "noninferiority_margin": 0.05,
+    "confidence_level": 0.95,
+    "minimum_test_episodes": 30,
+    "independent_sampling_unit": "episode"
+  },
+  "inference_caveat": "minimum_test_episodes=30 and independent_sampling_unit=episode are reused unchanged from lab/config.example.json's evaluator field, which the public evaluator (lab/run_real_system.py) treats as one unit per JSONL row (40 test rows satisfy minimum_test_episodes=30). This is a WEAKER independence assumption than dataset.independent_sampling_unit=frame above (only 20 independent test frames), because the evaluator has no native concept of frame-level clustering; the discrepancy is reported explicitly rather than silently reconciled, and the true independent count for power purposes is 20 frames, not 40 episodes.",
+  "tasks": {
+    "top_suction": {
+      "kind": "box",
+      "mask": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "tol": [
+        0.014,
+        0.013,
+        0.013,
+        0.12217304763960307,
+        0.13962634015954636,
+        1000000000.0
+      ]
+    },
+    "label_alignment": {
+      "kind": "box",
+      "mask": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "tol": [
+        0.014,
+        0.013,
+        0.013,
+        0.12217304763960307,
+        0.13962634015954636,
+        0.15707963267948966
+      ]
+    },
+    "keyed_insertion": {
+      "kind": "l1",
+      "mask": [
+        0,
+        1,
+        5
+      ],
+      "tol": [
+        0.014,
+        0.013,
+        1000000000.0,
+        1000000000.0,
+        1000000000.0,
+        0.15707963267948966
+      ]
+    }
+  },
+  "tasks_reused_note": "task reader kind/mask unchanged from lab/config.example.json and from run 1's config.json; only the numeric per-component tolerance was replaced with a value derived from TRAIN-split achievable ICP accuracy (75th percentile of the estimator-convergence-stage absolute pose error across the 40 TRAIN episodes, rounded up to 1mm / 1deg grid -- see TOLERANCE_DECISION.md). Components a task's mask does not use keep the original 1e9 sentinel unchanged.",
+  "mode": "bonferroni_multicheckpoint",
+  "checkpoints": [
+    4,
+    8,
+    12,
+    15
+  ],
+  "native_sensitivity": {
+    "decision_mechanism": "PROP-NATIVE-01/02: ACT iff fail_closed_task_pass invariant across {baseline(zero self-deviation), +perturbed, -perturbed} along H_k's single smallest eigenvalue direction",
+    "eigenpair_source": "lab/decay_predictor.py:eigh_H (additive to run4's kappa_rho_from_H, same symmetrization/eigh routine family, not a separately re-derived decomposition)",
+    "eigenvalue_selection_rule": "exactly the single smallest eigenvalue of H_k and its eigenvector (predeclared; the simpler of the two options the handoff offered over 'all eigenvalues below a declared fraction of lambda_max')",
+    "perturbation_signs_tested": [
+      "+1",
+      "-1"
+    ],
+    "perturbation_magnitude_formula": "m = min(C / lambda_min, CAP), C = CAP * lambda_ref",
+    "lambda_ref": 0.33927484832749355,
+    "lambda_ref_method": "median(lambda_min(H_k)) over all 640 TRAIN stage readings (lab/derive_native_threshold_from_train.py)",
+    "cap": 0.03274911721483188,
+    "cap_method": "75th percentile of the Euclidean norm of the online-observable local-dispersion proxy (lab/bop_icp_backend.py:local_proxy, the same 6-component proxy already used in observable_features) over all 640 TRAIN stage readings -- a physically-grounded scale (a real observed per-stage residual-uncertainty statistic), not an arbitrary round number. See RATIONALE.md for the discarded earlier candidate cap (0.005, a hand-picked round number below every task tolerance) that CALIBRATION-only diagnostics showed made the test structurally vacuous, and why this TRAIN-derived alternative was adopted instead.",
+    "fail_closed_degenerate_rule": "if lambda_min is non-finite or <= 0 (H_k numerically singular), m is set to CAP (bounded, never unbounded, never silently zero)",
+    "ground_truth_use": "NONE in the online decision; oracle abs_pose_error_6d is used only afterward by the evaluator to score ACT-licensed and HOLD episodes, exactly the same offline role T* already plays for runs 1-4",
+    "known_limitations": [
+      "SE(3) is still a continuum manifold representation for T_hat_k (theory/CONTINUUM_AUDIT_20260909.md item 1) -- this cycle removes T* from the online decision but does not fix that deeper continuum injection",
+      "a single H_k eigenvector mixes 3 rotation (radians) and 3 translation (metres) components, perturbed by one shared scalar magnitude without separate nondimensionalization -- the same honesty gap already disclosed for kappa in docs/NAVIER_STOKES_THROUGH_OUR_LENS.md",
+      "no proven floor exists yet for 'how small a lambda_min is too small' (q_formal/M.07's diameter-based floor was already shown in run4 not to apply to H_k's own structure, and remains unmechanized regardless); CAP is a declared/relative TRAIN-derived bound, not a bound resting on any proven floor",
+      "the relationship between 'H_k has a small eigenvalue' and 'the true pose error along that direction is large' is itself an assumption per PROP-NATIVE-02's own honest_caveats -- this run is exactly the empirical check that assumption needed"
+    ],
+    "reference": "PROP-NATIVE-01/02, ~/ANSE.ASIA/toledo/registry/proposals/native_retained_sensitivity.json"
+  }
+}
