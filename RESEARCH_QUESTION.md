@@ -2,41 +2,57 @@
 
 ## Core question
 
-Can an iterative 6D pose estimator terminate refinement because the current pose evidence is already sufficient for the downstream manipulation task, even when the estimator itself has not reached its generic convergence criterion?
+Can iterative 6D pose refinement terminate before estimator-side convergence because a **calibrated completion envelope** is already invariant under the downstream task reader?
 
-Let `k_T` be the earliest task-sufficient refinement stage and `k_E` the estimator-side stopping stage.
+Let `C_hat_k^cal` be the retained calibrated completion envelope at refinement stage `k`, and let `O_T` be the downstream task reader.
+
+Define the earliest coverage-qualified task-sufficient stage
 
 ```text
-k_T < k_E
+k_C = min{k : O_T(z) = PASS for every z in C_hat_k^cal}
 ```
 
-## Evidence status
+and let `k_E` be estimator-side stopping.
 
-### Supported in the public numerical fixture
+The computational opportunity is:
 
-- Iterative rigid registration is executed rather than represented only by synthetic action costs.
-- The gate is task-conditioned and cannot access hidden ground-truth pose error.
-- On the frozen in-distribution standard run, mean `k_T` is below mean `k_E` for all three tasks, with paired bootstrap intervals below zero.
-- Completion, ACT, HOLD, unsafe ACT, iterations, and wall-clock readouts are all reported.
-- A 2x observation-noise stress can substantially reduce the usefulness of the frozen stopping rule.
+```text
+k_C < k_E
+```
 
-### Still open for a real vision/robotics backend
+This is stronger than stopping on a raw uncertainty score. The still-admissible pose alternatives must be task-equivalent under a completion envelope whose coverage is independently calibrated.
 
-H1. Task-conditioned stopping reduces refinement stages relative to estimator-side stopping.
+## Numerical hypotheses
 
-H2. Task-conditioned stopping reduces end-to-end perception latency after uncertainty/gate overhead.
+N1. Under the declared in-distribution numerical generator, the frozen trajectory-calibrated envelope achieves held-out episode-level coverage near its predeclared target.
 
-H3. Task completion is non-inferior within a predeclared margin.
+N2. `k_C < k_E` occurs on a substantial fraction of held-out episodes for at least one declared task.
+
+N3. Coverage-qualified task stopping reduces mean refinement stage relative to estimator-side stopping without an unacceptable loss of overall task completion.
+
+N4. Under a declared distribution shift, envelope coverage and/or operational completion may degrade; the method must report that degradation rather than silently transfer the in-distribution guarantee.
+
+## Real-backend hypotheses
+
+H1. A real iterative 6D pose backend can expose an observable proxy from which a calibrated completion envelope can be constructed without giving hidden ground truth to the online gate.
+
+H2. Coverage-qualified task stopping reduces mean refinement stages relative to estimator-side stopping.
+
+H3. Coverage-qualified task stopping reduces end-to-end perception latency after calibration-adapter and gate overhead.
+
+H4. Overall task completion is non-inferior within a predeclared margin, with HOLD retained in the denominator.
 
 ## Falsifiers
 
-For a tested real backend/task, the proposed practical advantage is unsupported if:
+The proposal is not supported for a tested backend/task if any of the following hold:
 
-- `k_T < k_E` is rare or absent;
-- total latency is not reduced after gate/uncertainty overhead;
+- held-out in-distribution completion-envelope coverage materially misses the predeclared target;
+- `k_C < k_E` is rare or absent;
+- total latency is not reduced after uncertainty/calibration/gate overhead;
 - task completion drops beyond the declared margin;
 - HOLD frequency makes overall completion operationally unacceptable;
-- unsafe ACT exceeds the declared operating tolerance;
-- the stopping signal fails under realistic calibration or distribution shift.
+- distribution shift causes coverage failure that is not detected or reported;
+- the observable proxy cannot support a useful calibrated envelope;
+- the downstream task reader is misspecified so that reader-invariance does not track real task success.
 
-A numerical result cannot falsify or confirm the real-camera/GPU/robot hypotheses by itself.
+A numerical result cannot confirm the real-camera/GPU/robot hypotheses by itself.
