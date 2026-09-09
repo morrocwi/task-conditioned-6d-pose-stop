@@ -4,7 +4,7 @@ Public, implementation-first research repository.
 
 > **Question:** can iterative pose refinement stop before estimator-side convergence because every pose still admitted by a calibrated completion envelope already gives the same downstream task verdict?
 
-The central event is now:
+The central event is:
 
 ```text
 k_C < k_E
@@ -37,12 +37,13 @@ ACT is licensed only when **every pose error in the retained completion set pass
 
 ## Evidence layers
 
-The repository now contains four explicit layers:
+The repository contains five explicit layers:
 
 1. **Finite diagnostic** — exhaustive toy routing fixture (`benchmark.py`).
 2. **Numerical 6D backend** — iterative point-to-point ICP/Kabsch on generated 3-D point clouds (`experiments/numerical_icp.py`).
 3. **Raw-proxy completion ablation** — trajectory-level split calibration directly on the local proxy (`experiments/conformal_completion.py`).
 4. **Learned-shape calibrated certificate** — TRAIN a fixed observable error-shape model, CALIBRATE one conformal score per whole refinement episode, then evaluate on new FINAL TEST seeds (`experiments/learned_conformal_completion.py`).
+5. **Repeated-cycle replication** — rerun the frozen TRAIN→CALIBRATION→TEST procedure across independent numerical draws (`experiments/replication_study.py`).
 
 No camera, RGB-D sensor, neural pose model, contact physics, or physical robot is executed by these numerical experiments.
 
@@ -62,9 +63,9 @@ A statistical bridge is then used to obtain a calibrated numerical envelope from
 
 Conformal pose uncertainty itself is prior art. The research question here is the **use of a calibrated pose set as a downstream task stopping certificate for iterative refinement**.
 
-## Frozen learned-shape result
+## First frozen learned-shape final test
 
-The first frozen FINAL TEST was opened only after the learned-shape method and replacement final-test seeds were committed. Earlier development test seeds were retired and are recorded in the result lineage.
+The first FINAL TEST was opened only after the learned-shape method and replacement final-test seeds were committed. Earlier development test seeds were retired and are recorded in the result lineage.
 
 Protocol:
 
@@ -76,11 +77,7 @@ STRESS        60 episodes (2x sensor noise)
 nominal marginal whole-trajectory coverage = 90%
 ```
 
-### In-distribution final test
-
-Observed whole-trajectory envelope coverage: **85.00%** (Wilson 95% CI 77.53%–90.30%).
-
-This is below the nominal 90% target and is reported as such. It must not be rewritten as “90% empirical coverage”.
+Observed whole-trajectory envelope coverage was **85.00%** (Wilson 95% CI 77.53%–90.30%). This is below the nominal 90% target and is reported as such.
 
 | Task | estimator mean k | completion mean k | `k_C < k_E` | estimator completion | completion-stop completion | HOLD | unsafe ACT |
 |---|---:|---:|---:|---:|---:|---:|---:|
@@ -90,7 +87,33 @@ This is below the nominal 90% target and is reported as such. It must not be rew
 
 Frozen record: [`results/learned_conformal/STANDARD_RESULTS.md`](results/learned_conformal/STANDARD_RESULTS.md).
 
-On this runner, numerical latency also fell with the earlier stopping stage (16.60 ms estimator-stop versus 13.26 / 13.89 / 14.89 ms completion-stop), but these are machine-specific CPU numerical timings — **not GPU/robot speedups**.
+On this runner, numerical latency also fell with the earlier stopping stage, but these are machine-specific CPU numerical timings — **not GPU/robot speedups**.
+
+## Repeated complete-cycle evidence
+
+Because one realized test proportion is not the conformal theorem, the frozen learned procedure was rerun through **10 independent TRAIN→CALIBRATION→TEST cycles** without retuning the method.
+
+Across those cycles:
+
+```text
+nominal coverage                 90.00%
+mean realized trajectory cover  91.17%
+median realized coverage        91.67%
+range                            83.33%–95.00%
+replicates >= nominal           9 / 10
+```
+
+Task utility averaged:
+
+| Task | mean `k_C < k_E` | mean `k_C-k_E` | mean completion difference | mean HOLD | mean unsafe ACT |
+|---|---:|---:|---:|---:|---:|
+| top suction | 92.33% | -3.228 | -1.17 pp | 6.00% | 0.00% |
+| label alignment | 91.33% | -2.770 | 0.00 pp | 6.17% | 0.00% |
+| keyed insertion | 83.83% | -1.632 | -0.33 pp | 6.50% | 0.00% |
+
+Frozen replication record: [`results/replication/STANDARD_REPLICATION.md`](results/replication/STANDARD_REPLICATION.md).
+
+This repeated numerical study makes the interpretation more precise: the 85% first final-test realization is not evidence by itself that the procedure's long-run marginal coverage is 85%. Across these 10 independent numerical cycles the mean realized proportion was 91.17%, while individual cycles still varied materially. Ten cycles do not establish real-sensor coverage or a universal guarantee.
 
 ## A useful negative result
 
@@ -109,8 +132,6 @@ sufficiently covered
 AND
 sufficiently task-discriminative
 ```
-
-The learned-shape model makes the set substantially more informative, but its first frozen final test observed only 85% trajectory coverage against a nominal 90% target. The coverage–utility problem therefore remains an empirical part of the paper rather than being hidden as an implementation detail.
 
 ## Distribution-shift boundary
 
@@ -132,7 +153,7 @@ python -m pip install -r requirements.txt
 python reproduce.py --profile quick
 ```
 
-For the frozen-size numerical experiment:
+For the larger numerical experiment:
 
 ```bash
 python reproduce.py --profile standard
@@ -144,11 +165,12 @@ Outputs include:
 artifacts/numerical/
 artifacts/conformal-raw/
 artifacts/conformal-learned/
+artifacts/replication/
 ```
 
 ## Automatic checks
 
-GitHub Actions rebuilds the experiment on Linux, macOS, and Windows. A separate Ubuntu standard-evidence job runs the larger learned certificate and uploads the result record.
+GitHub Actions rebuilds the experiment on Linux, macOS, and Windows. A separate Ubuntu standard-evidence job runs the larger learned certificate plus the 10-cycle replication study and uploads the result records.
 
 Mechanical controls include:
 
@@ -161,7 +183,10 @@ Mechanical controls include:
 - whole-trajectory rather than selected-stage calibration;
 - robust-PASS set-inclusion tests;
 - `unsafe_act_on_covered_episode_count == 0` for the implemented numerical readers;
+- repeated complete-cycle calibration/test diagnostics without method tuning;
 - glosa claim-card validation.
+
+The current public CI has passed on Ubuntu, macOS, and Windows for the full numerical stack.
 
 ## Evidence discipline
 
@@ -177,25 +202,27 @@ Q5 what independent check was run?
 
 See [`evidence/claim_card.json`](evidence/claim_card.json).
 
-Current evidence ceiling: **K1 public provisional / I4 mechanical-original-record checks**. Independent external human replication and real robotic validation have not yet occurred.
+Current evidence ceiling: **K1 public provisional / I4 mechanical-original-record checks**. Repeated numerical cycles increase mechanical stress-testing but do not constitute independent external-human or physical-robot replication.
 
 ## Claim boundary
 
 Supported now:
 
 - a public iterative 6D numerical backend can be stopped by task-reader invariance over a calibrated completion set;
-- on the first frozen learned-shape final test, `k_C < k_E` occurs in 87.5–90% of episodes depending on task;
-- the implemented robust gate produced no unsafe ACTs in that numerical final test;
+- the first frozen learned final test shows `k_C < k_E` in 87.5–90% of episodes depending on task;
+- across 10 complete-cycle numerical replications, mean realized trajectory coverage is 91.17% with 9/10 cycles at or above the nominal 90% proportion;
+- across those cycles, completion-stop mean task completion differs from estimator stopping by 0 to -1.17 percentage points depending on task;
+- the implemented robust gate produced zero unsafe ACTs in the reported numerical studies;
 - a naive high-coverage set can be operationally useless because it is too wide;
 - shifted conditions can force task-specific HOLD.
 
 Still open / HOLD:
 
-- empirical attainment of the nominal coverage target across repeated independent calibration/test draws;
 - real RGB-D coverage;
 - FoundationPose-specific or GPU speedup;
 - physical manipulation non-inferiority;
 - physical safety certification;
+- validity under arbitrary distribution shift;
 - IDM-specific advantage.
 
 ## Prior-art boundary
