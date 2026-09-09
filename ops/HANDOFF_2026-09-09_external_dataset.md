@@ -95,3 +95,26 @@ complete X" if that's what happened); (3) only if the review passes (or founder 
 findings), tag+push+GitHub release on both origin and local — never release over an unresolved
 BLOCK. If the review finds the run did not actually succeed (blocked, degenerate, or overclaiming),
 report that plainly instead of releasing anyway.
+
+## Positioning constraint (founder relayed, 2026-09-09, reviewer-simulation pass)
+
+Hard rule for any writeup this or a later run produces: NEVER write "we solve 6D pose estimation"
+or anything equivalent. The approved framing, precise, do not loosen it:
+
+> "We are not trying to eliminate perception error entirely. We ask whether the error that remains
+> still affects what the robot is about to do."
+
+Explicitly out of scope and never claimed as done by this project: learning rotation on SO(3),
+building a new pose estimator, data efficiency / viewpoint generalization, multi-object detection.
+This project only does: reducing pose error's effect on the downstream robot task, declaring when
+pose is "good enough for this task," using calibrated (not raw) uncertainty, and abstaining (HOLD)
+instead of risking an unsafe ACT.
+
+Evidence-honesty note relevant to the current run: classical ICP/Kabsch refinement against a real
+BOP-format point cloud (this run's own contribution) is a genuine step past a purely synthetic
+generator, but it is still NOT a learned/neural iterative pose backend (e.g. FoundationPose-class).
+State this distinction explicitly in any results writeup — do not blur "real sensor data" with
+"real learned vision backend." If a future run adds a real learned backend and k_C<k_E, T_C<T_E,
+and S_C>=S_E-delta all hold together with the unsafe-ACT/HOLD story, that is the founder's stated
+threshold for a strong ICRA/IROS/RA-L-shaped contribution (not necessarily CVPR, which wants a
+core vision/estimation contribution this project explicitly does not make).
