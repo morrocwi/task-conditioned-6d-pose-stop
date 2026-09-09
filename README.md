@@ -81,6 +81,7 @@ Adversarial regression tests retain the specific small-n, NaN, and n=1 inference
 8. **Real-sensor ICP run (in-house, not independent)** — real BOP LM-O RGB-D data through a real numpy+scipy point-to-point ICP/Kabsch backend, via the `lab/` harness (`lab/results/real-bop-lmo-2026-09-09/`). This is a negative/falsifying result: see "Real-sensor evidence" below.
 9. **Second real-sensor ICP run, tolerance-rederivation cycle (in-house, not independent)** — same backend/dataset/split as run 8, task tolerances re-derived from TRAIN-split achievable accuracy instead of reused from the numerical fixture (`lab/results/real-bop-lmo-2026-09-09-run2/`). Same negative/falsifying result, and it rules out "the tolerances were just too tight" as the explanation: see "Real-sensor evidence" below.
 10. **Third real-sensor ICP run, Bonferroni-corrected multi-checkpoint certificate (in-house, not independent)** — same backend/dataset/split/tolerances as run 9, changes only the certificate-construction method: a NEW code path (`lab/multicheckpoint.py`, `cqts/safety.py`'s Bonferroni functions) restricted to K'=4 predeclared checkpoint stages, calibrated independently at `alpha/K'` (Toledo proposal PROP-CONF-03; union bound machine-checked in `~/ANSE.ASIA/toledo/coq/canonical/PROP_CONF_03_union_bound.v`), instead of the existing joint whole-trajectory construction (unchanged, still used by runs 8-9). Refutes the specific falsifiable prediction it was designed to test: per-checkpoint quantiles came out LARGER, not smaller, than the joint quantile, and the certificate rate stayed at 0%. See "Real-sensor evidence" below.
+11. **Fourth real-sensor ICP run, closed-form condition-number decay predictor (in-house, not independent)** — same backend/dataset/split/tolerances as runs 9-10, changes only the error-scale predictor: replaces C6's fitted log-linear model with a closed-form decay law (`lab/decay_predictor.py`, Toledo proposal PROP-DECAY-01) derived from the ICP normal-equations Hessian H_k's own condition number, combined with the (unchanged) whole-trajectory calibration construction. Refutes both the proposed H_k~graph-Laplacian analogy (structurally, confirmed numerically) and the predicted calibration improvement (the new predictor's calibrated q is LARGER, not smaller, than either prior construction). See "Real-sensor evidence" below.
 
 The numerical research evidence uses generated point clouds. No camera, neural pose estimator, contact physics, or physical robot is silently implied by those results.
 
@@ -171,6 +172,45 @@ construction is incorrect (its own coverage guarantee, 97.5-100% all-checkpoints
 90% target, held); it refutes the more specific quantitative prediction that this restriction would
 be numerically cheaper than the joint construction at n=40. Full accounting in
 [`lab/results/real-bop-lmo-2026-09-09-run3/RESULT.md`](lab/results/real-bop-lmo-2026-09-09-run3/RESULT.md).
+
+### Fourth real-sensor cycle: closed-form condition-number decay predictor (PROP-DECAY-01)
+
+Founder authorization: use Toledo's real Coq-proven spectral ceilings (weld/M.40, weld/M.42) plus
+the Mohar/Fiedler diameter floor `q_formal/M.07` (a bare citation, not Coq-proven) to replace C6's
+fitted log-linear predictor with a decay law derived from the ICP normal-equations Hessian `H_k`'s
+own condition number: `kappa_k=lambda_max(H_k)/lambda_2(H_k)`, `rho_k<=(kappa_k-1)/(kappa_k+1)`,
+`s_k,i=rho_k^(K-k)*|residual_i|`. Toledo proposal `PROP-DECAY-01`
+(`~/ANSE.ASIA/toledo/registry/proposals/spectral_decay_predictor.json`) disclosed up front that the
+`H_k ~ L_R` identification is an ANALOGY, not a proven fact.
+
+A companion attempt (in the Toledo repo, not this one) to Coq-prove `q_formal/M.07`'s diameter
+floor `lambda_2 >= 4/(nD)` **did not close** in the time given — the classical Mohar 1991 proof
+needs the full min-max/Courant-Fischer characterization of `lambda_2` over the whole space
+orthogonal to the constant vector, a materially stronger apparatus than the single-Rayleigh-pair
+style this workspace's existing spectral Coq files use, and was not completed. Independent of that,
+exposing the real `H_k = J^T J` this backend computes (`lab/bop_icp_backend.py:normal_equations_H`,
+a purely additive diagnostic; the Kabsch update itself is unchanged) shows the proposed analogy
+**does not hold structurally here at all**: `H_k` is a fixed 6x6 SPD matrix over the 6 pose degrees
+of freedom, with no vertex/edge structure and no dependence of its dimension on the correspondence
+count — a graph "diameter D" is simply undefined for it. This run therefore uses the correct
+quantity for `H_k` instead: the ordinary matrix condition number `kappa=lambda_max/lambda_min`
+feeding the classical (cited) Gauss-Newton/Kantorovich contraction bound, which needs no graph
+object and no `q_formal/M.07` at all.
+
+`lab/results/real-bop-lmo-2026-09-09-run4/` reuses runs 9-10's identical dataset/split/tolerances
+and the unmodified whole-trajectory (C7-C9) calibration construction (chosen over run3's
+Bonferroni-checkpoint construction because run3 found it gives the smaller `q`), varying only the
+predictor. Predeclared before FINAL TEST (`724c47a`).
+
+**Result: the tested falsifiable prediction is REFUTED, on two independent fronts.** (1) The
+proposed `H_k~L_R` analogy is refuted structurally and numerically (a real correspondence k-NN
+graph built separately from the same ICP stage has n=400, diameter=16, giving `4/(nD)=0.000625` —
+an unrelated number to `H_k`'s own `lambda_min=0.1235` at that stage). (2) The closed-form decay
+predictor's calibrated envelope is not tighter than C6's: `q=3.298` (~27x inflation) is LARGER than
+both the original joint `q≈2.0008` (runs 1-2) and every run3 Bonferroni per-checkpoint `q`
+(2.085-2.200). Certificate rate remains exactly 0.0 for all three tasks (100% HOLD), the fourth
+cycle in a row to find this; held-out coverage is 95.0% (Wilson 83.5-98.6%). Full accounting in
+[`lab/results/real-bop-lmo-2026-09-09-run4/RESULT.md`](lab/results/real-bop-lmo-2026-09-09-run4/RESULT.md).
 
 ## First frozen learned-shape final test
 

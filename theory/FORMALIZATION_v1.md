@@ -209,6 +209,63 @@ is the specific quantitative prediction that it would be cheaper than C7 at this
 the union-bound argument itself. See `lab/results/real-bop-lmo-2026-09-09-run3/RESULT.md` for full
 accounting.
 
+### C6b — closed-form condition-number decay predictor, alternative to C6 (implemented)
+
+An alternative to C6 above (not to C7–C9, which are reused unchanged): instead of fitting `β_i` by
+TRAIN regression, derive `s_{k,i}` in closed form from the ICP normal-equations Hessian
+`H_k = J^T J` (the same Jacobian `lab/bop_icp_backend.py::local_proxy` already builds internally,
+now also exposed directly via `normal_equations_H`):
+
+```
+kappa_k = lambda_max(H_k) / lambda_min(H_k)                    (ordinary matrix condition number)
+rho_k   = (kappa_k - 1) / (kappa_k + 1)                        (Kantorovich/Gauss-Newton contraction bound, cited)
+s_{k,i} = rho_k^{K-k} * max(|proxy_{k,i}|, delta_i)            (proxy = C6's own local-dispersion feature, un-logged)
+```
+
+Toledo proposal **PROP-DECAY-01**
+(`~/ANSE.ASIA/toledo/registry/proposals/spectral_decay_predictor.json`) originally proposed reading
+`H_k` as an instance of the graph-Laplacian family `L_R := D_W - W`, so that `q_formal/M.07`'s
+diameter-based Fiedler floor `lambda_2 >= 4/(nD)` could lower-bound `H_k`'s conditioning (using
+`lambda_2` in the graph-Fiedler sense — 2nd smallest of an n-node Laplacian's eigenvalues, not the
+ordinary 2nd-largest of a small dense matrix's spectrum). Two independent checks refuted this:
+
+1. A companion Coq-proof attempt on `q_formal/M.07`'s bound itself (paired Toledo-repo task, not
+   this repository) did not close — Mohar's 1991 proof needs the full min-max/Courant-Fischer
+   characterization of `lambda_2` over the whole space orthogonal to the constant vector, stronger
+   than the single-Rayleigh-pair style this workspace's existing spectral Coq files
+   (`InfoSpectralCeilingSharp.v`, `RDL_SpectralCeiling.v`) use.
+2. Exposing the real `H_k` this backend computes shows the `H_k ~ L_R` identification does not hold
+   structurally regardless: `H_k` is a FIXED 6x6 SPD matrix (one row/column per pose degree of
+   freedom), with no vertex/edge structure and no dependence of its size on the correspondence
+   count `n_k` (more inliers change its six eigenvalues quantitatively, never its shape) — a graph
+   "diameter D" is undefined for it. `kappa_k`/`rho_k` above therefore use the ORDINARY matrix
+   condition number (its smallest of only 6 eigenvalues, not a Fiedler value), which is exactly
+   what the classical (cited) Gauss-Newton contraction bound needs — no graph object, and no
+   `q_formal/M.07`, are required at all.
+
+Implemented as a NEW code path: `lab/decay_predictor.py` (`kappa_rho_from_H`,
+`decay_predicted_log_error`, `DecayModel`), wired into `lab/run_real_system.py::predicted_log_error`
+via a documented, additive `isinstance(model, DecayModel)` branch — C6's own fitted-regression
+branch is untouched for any non-`DecayModel` caller. `lab/bop_icp_backend.py::normal_equations_H`
+exposes `H_k` as a purely additive diagnostic field (`ICPStage.hessian`); the Kabsch closed-form
+update itself is unchanged. Executed once, on real BOP LM-O data, combined with the unmodified
+whole-trajectory (C7–C9) calibration construction — chosen over C9b's Bonferroni-checkpoint
+construction because C9b's own run (run3) found it gives a smaller `q` — in
+`lab/results/real-bop-lmo-2026-09-09-run4/`.
+
+**Result: refuted.** The calibrated `q=3.298` (~27x multiplicative envelope inflation) is LARGER
+than both C6's original joint `q≈2.0008` (runs 1–2) and every C9b per-checkpoint `q` (2.085–2.200);
+certificate rate stays at exactly 0.0 for all three declared tasks (100% HOLD), the fourth cycle in
+a row to find this. A real correspondence k-NN graph built separately (diagnostic only, not part of
+the predictor) from one ICP stage confirms the structural mismatch numerically: `n=400`,
+`diameter=16`, `4/(nD)=0.000625`, an unrelated number to that same stage's `H_k` `lambda_min=0.1235`.
+Disclosed, not-yet-independently-re-verified diagnosis for why the closed-form predictor
+underperforms: measured `rho_k` across TRAIN stages clusters tightly near 1 (median 0.9991), likely
+because `H_k`'s rotation columns (`-skew(R p_i)`, scaled by point-coordinate magnitude) and
+translation columns (identity-scaled) mix units, so `kappa_k` is dominated by this
+parameterization-scaling artifact rather than by the correspondence set's true geometric
+conditioning. See `lab/results/real-bop-lmo-2026-09-09-run4/RESULT.md` for full accounting.
+
 ---
 
 ## Part II — Verification / Decision (implemented, C11–C20)
