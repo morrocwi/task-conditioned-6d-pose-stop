@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Coverage-qualified pose-stop episode",
+  "type": "object",
+  "required": ["episode_id", "stages", "oracle"],
+  "properties": {
+    "episode_id": {"type": "string", "minLength": 1},
+    "stages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["k", "features", "incremental_ms", "estimator_stop"],
+        "properties": {
+          "k": {"type": "integer", "minimum": 0},
+          "features": {"type": "array", "minItems": 1, "items": {"type": "number"}},
+          "incremental_ms": {"type": "number", "minimum": 0},
+          "estimator_stop": {"type": "boolean"}
+        },
+        "additionalProperties": true
+      }
+    },
+    "oracle": {
+      "type": "object",
+      "required": ["abs_pose_error_6d"],
+      "properties": {
+        "abs_pose_error_6d": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "array",
+            "minItems": 6,
+            "maxItems": 6,
+            "items": {"type": "number", "minimum": 0}
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
