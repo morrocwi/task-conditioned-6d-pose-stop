@@ -6,6 +6,7 @@ on:
       - 'experiments/**'
       - 'theory/**'
       - 'evidence/**'
+      - 'lab/**'
       - 'tests/**'
       - 'requirements.txt'
       - 'reproduce.py'
@@ -43,6 +44,10 @@ jobs:
         run: python experiments/learned_conformal_completion.py --profile ci --out-dir artifacts/conformal-learned
       - name: Repeated calibration-test diagnostic (CI profile)
         run: python experiments/replication_study.py --profile ci --out-dir artifacts/replication
+      - name: University lab harness smoke test
+        run: |
+          python lab/make_example_data.py --out-dir artifacts/lab-example --n 24
+          python lab/run_real_system.py --config lab/config.example.json --train artifacts/lab-example/train.jsonl --calibration artifacts/lab-example/calibration.jsonl --test artifacts/lab-example/test.jsonl --out artifacts/lab-example/results.json
       - name: Check evidence boundaries
         shell: python
         run: |
@@ -74,6 +79,11 @@ jobs:
           assert repl['evidence_boundary']['method_tuned_inside_replication'] is False
           for task in repl['summary']['tasks'].values():
               assert task['total_unsafe_act_on_covered_episode_count']==0
+
+          lab=json.loads(Path('artifacts/lab-example/results.json').read_text())
+          assert lab['evidence_boundary']['online_gate_uses_oracle'] is False
+          for task in lab['evaluation']['tasks'].values():
+              assert task['unsafe_act_on_covered_episode_count']==0
           print('evidence boundaries and coverage-to-task implication: PASS')
       - uses: actions/upload-artifact@v4
         if: always()
@@ -84,6 +94,7 @@ jobs:
             artifacts/conformal-raw/
             artifacts/conformal-learned/
             artifacts/replication/
+            artifacts/lab-example/
 
   standard-evidence:
     if: github.event_name != 'pull_request'
