@@ -1,0 +1,56 @@
+name: numerical-backend-reproduction
+
+on:
+  push:
+    paths:
+      - 'experiments/**'
+      - 'evidence/**'
+      - 'tests/**'
+      - 'requirements.txt'
+      - 'reproduce.py'
+      - '.github/workflows/numerical-backend.yml'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reproduce:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - name: Unit and evidence controls
+        run: |
+          python -m unittest discover -s tests -v
+          python evidence/validate_claim_card.py
+      - name: Reproduce numerical backend (CI profile)
+        run: python experiments/numerical_icp.py --profile ci --out-dir artifacts/numerical
+      - name: Check evidence boundary
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          d=json.loads(Path('artifacts/numerical/numerical_icp.json').read_text())
+          b=d['evidence_boundary']
+          assert d['label']=='[NumericalBackend]'
+          assert b['rigid_registration_executed'] is True
+          assert b['gate_has_hidden_ground_truth_access'] is False
+          assert b['camera_executed'] is False
+          assert b['neural_pose_model_executed'] is False
+          assert b['physical_robot_executed'] is False
+          print('evidence boundary: PASS')
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numerical-backend-${{ matrix.os }}
+          path: artifacts/numerical/
