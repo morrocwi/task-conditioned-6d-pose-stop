@@ -7,10 +7,10 @@ reproducible: `lab/run_real_system.py` is unmodified except for an added
 `--mode` flag that dispatches into this module.
 
 Design (Toledo proposal PROP-CONF-03,
-~/ANSE.ASIA/toledo/registry/proposals/conformal_stopping_family.json;
+toledo/registry/proposals/conformal_stopping_family.json;
 union-bound argument machine-checked, axiom-free, in
-~/ANSE.ASIA/toledo/coq/canonical/PROP_CONF_03_union_bound.v; diagnosis in
-~/ANSE.ASIA/glosa/projects/GLS-2026-005_pose-stop-conformal-diagnosis/
+toledo/coq/canonical/PROP_CONF_03_union_bound.v; diagnosis in
+glosa/projects/GLS-2026-005_pose-stop-conformal-diagnosis/
 DIAGNOSIS_HYPOTHESIS.md):
 
   For K' predeclared checkpoint stages k_1..k_{K'} (K' <= 4 feasible at

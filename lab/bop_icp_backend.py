@@ -187,7 +187,7 @@ def normal_equations_H(model, R, t, corr):
     solve, not an iterative linearized normal-equations solve) -- H_k is a
     post-hoc diagnostic of the same correspondences, added per
     registry/proposals/spectral_decay_predictor.json (PROP-DECAY-01,
-    ~/ANSE.ASIA/toledo) to test the H_k ~ graph-Laplacian analogy against
+    toledo) to test the H_k ~ graph-Laplacian analogy against
     this real backend. See lab/decay_predictor.py for the honest finding on
     whether that analogy holds structurally here.
     """

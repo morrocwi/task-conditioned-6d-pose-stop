@@ -5,7 +5,7 @@ Seventh real-data cycle. Founder authorization (2026-09-09, verbatim): "ultracod
 สมมุติฐานใหม่" — convene an ultracode team meeting using existing knowledge, read the work through the
 Toledo lens and the readout_universe+readout_genesis lens, find the answer, and expand the experiment
 following the findings and new hypothesis. The team meeting converged on Toledo proposal PROP-NATIVE-04
-(`~/ANSE.ASIA/toledo/registry/proposals/native_retained_sensitivity.json`), which this run tests.
+(`toledo/registry/proposals/native_retained_sensitivity.json`), which this run tests.
 
 ## What is genuinely different from runs 5-6
 

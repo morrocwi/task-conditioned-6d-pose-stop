@@ -4,7 +4,7 @@ Fourth real-data cycle. Founder authorization (`ops/HANDOFF_2026-09-09_external_
 "Fourth cycle authorized"): replace C6's fitted log-linear error-scale predictor
 (`theory/FORMALIZATION_v1.md`) with a closed-form decay law derived from the ICP normal-equations
 matrix's own conditioning, per Toledo proposal PROP-DECAY-01
-(`~/ANSE.ASIA/toledo/registry/proposals/spectral_decay_predictor.json`).
+(`toledo/registry/proposals/spectral_decay_predictor.json`).
 
 ## What is varied, what is not
 

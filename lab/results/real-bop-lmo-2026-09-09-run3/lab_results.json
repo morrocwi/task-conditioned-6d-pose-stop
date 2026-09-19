@@ -29,7 +29,7 @@
       "independent_sampling_unit": "episode"
     },
     "timing_mode": "trajectory_prefix_estimate",
-    "reference": "PROP-CONF-03, ~/ANSE.ASIA/toledo/registry/proposals/conformal_stopping_family.json; union bound machine-checked in ~/ANSE.ASIA/toledo/coq/canonical/PROP_CONF_03_union_bound.v"
+    "reference": "PROP-CONF-03, toledo/registry/proposals/conformal_stopping_family.json; union bound machine-checked in toledo/coq/canonical/PROP_CONF_03_union_bound.v"
   },
   "evaluation": {
     "checkpoints": [

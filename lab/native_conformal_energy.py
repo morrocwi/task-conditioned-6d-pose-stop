@@ -4,7 +4,7 @@
 Seventh real-data cycle (ops/HANDOFF_2026-09-09_external_dataset.md, run 7
 authorization following the 2026-09-09 ultracode team meeting convened after
 run 6 (PROP-NATIVE-03) was refuted). Toledo proposal:
-~/ANSE.ASIA/toledo/registry/proposals/native_retained_sensitivity.json,
+toledo/registry/proposals/native_retained_sensitivity.json,
 id "PROP-NATIVE-04".
 
 This is a targeted composition of THREE fixes, one per diagnosed defect from

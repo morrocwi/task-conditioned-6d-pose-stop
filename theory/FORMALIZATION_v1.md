@@ -193,9 +193,9 @@ as the joint C7 construction, without its 15-way stage-aggregation term. Feasibi
 feasible, K'=5 already forcing `q=+∞` at every checkpoint.
 
 Registered in Toledo as proposal **PROP-CONF-03**
-(`~/ANSE.ASIA/toledo/registry/proposals/conformal_stopping_family.json`; C7/C8 above correspond to
+(`toledo/registry/proposals/conformal_stopping_family.json`; C7/C8 above correspond to
 retroactively-registered **PROP-CONF-01/02**). The union-bound combination step is machine-checked,
-axiom-free, over ℚ: `~/ANSE.ASIA/toledo/coq/canonical/PROP_CONF_03_union_bound.v`
+axiom-free, over ℚ: `toledo/coq/canonical/PROP_CONF_03_union_bound.v`
 (`finite_union_bound`, `bonferroni_checkpoints`, both `Print Assumptions` = "Closed under the
 global context"). The per-checkpoint split-conformal exchangeability guarantee it composes (C8 at
 level α/K') is cited from standard conformal-prediction theory, not itself re-derived here.
@@ -205,7 +205,7 @@ Implemented as a NEW code path (`lab/multicheckpoint.py`,
 `bonferroni_checkpoint_alpha`), additive alongside the unmodified joint C7–C9 construction so
 existing results stay reproducible (`lab/run_real_system.py --mode whole_trajectory` vs.
 `--mode bonferroni_multicheckpoint`). Executed once, on real BOP LM-O data, in
-`lab/results/real-bop-lmo-2026-09-09-run3/` (diagnosis: `~/ANSE.ASIA/glosa/projects/GLS-2026-005_pose-stop-conformal-diagnosis/DIAGNOSIS_HYPOTHESIS.md`).
+`lab/results/real-bop-lmo-2026-09-09-run3/` (diagnosis: `glosa/projects/GLS-2026-005_pose-stop-conformal-diagnosis/DIAGNOSIS_HYPOTHESIS.md`).
 Result: **the falsifiable prediction that this construction's `q_{k_m}` would be smaller than the
 joint C7 construction's `q≈2.0008` was refuted** — the four checkpoints' quantiles (`q ∈ [2.085,
 2.200]`) came out 4.3–10.0% larger, because at n=40 calibration episodes every checkpoint's
@@ -230,7 +230,7 @@ s_{k,i} = rho_k^{K-k} * max(|proxy_{k,i}|, delta_i)            (proxy = C6's own
 ```
 
 Toledo proposal **PROP-DECAY-01**
-(`~/ANSE.ASIA/toledo/registry/proposals/spectral_decay_predictor.json`) originally proposed reading
+(`toledo/registry/proposals/spectral_decay_predictor.json`) originally proposed reading
 `H_k` as an instance of the graph-Laplacian family `L_R := D_W - W`, so that `q_formal/M.07`'s
 diameter-based Fiedler floor `lambda_2 >= 4/(nD)` could lower-bound `H_k`'s conditioning (using
 `lambda_2` in the graph-Fiedler sense — 2nd smallest of an n-node Laplacian's eigenvalues, not the
@@ -388,7 +388,7 @@ independently reproducible; this is a parallel path, per `ops/HANDOFF_2026-09-09
 ("Fifth cycle authorized, 2026-09-09: H3").
 
 **Motivation (PROP-NATIVE-01,
-`~/ANSE.ASIA/toledo/registry/proposals/native_retained_sensitivity.json`):** every construction
+`toledo/registry/proposals/native_retained_sensitivity.json`):** every construction
 above (C7–C14) is built around comparing an estimate against a (frozen, calibrated) notion of
 distance to the unobserved true pose `T*` — even C7–C9's split-conformal calibration only ever sees
 `T*` on the CALIBRATION split, never online, but it is still an ingredient of the calibration itself.
@@ -429,9 +429,9 @@ for any real symmetric matrix (PROP-NATIVE-02's stated advantage over PROP-DECAY
 has NO proven floor for "how small is too small an eigenvalue": `q_formal/M.07`'s diameter-based
 floor `lambda_2 >= 4/(nD)` was already shown (C6b, run4) not to apply to `H_k`'s own structure
 (no vertex/edge structure, no diameter), and remains unmechanized regardless (its own Coq attempt did
-not close — `~/ANSE.ASIA/toledo`). `CAP` here is therefore a declared/relative, TRAIN-derived bound
+not close — `toledo`). `CAP` here is therefore a declared/relative, TRAIN-derived bound
 (p75 of the existing local-dispersion-proxy norm), **not a bound resting on any proven floor**. This
-matters doubly because of `~/ANSE.ASIA/toledo/docs/NAVIER_STOKES_THROUGH_OUR_LENS.md`'s kappa-scaling
+matters doubly because of `toledo/docs/NAVIER_STOKES_THROUGH_OUR_LENS.md`'s kappa-scaling
 honesty note (and `docs/L_R_SPECTRAL_CEILING_AND_FLOOR.md`'s own ceiling/floor pair): that note shows
 a condition-number-style bound `kappa <= (ceiling)/(floor)` is *not* uniform as a correspondence
 graph's size/diameter grows — it grows with graph size, by construction of the two proven/cited

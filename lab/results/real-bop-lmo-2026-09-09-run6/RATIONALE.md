@@ -10,7 +10,7 @@ coarse-detector initial-pose error, so the check answers "is a tiny wobble toler
 ## Toledo-first
 
 `PROP-NATIVE-03` was already registered in
-`~/ANSE.ASIA/toledo/registry/proposals/native_retained_sensitivity.json` before this cycle began
+`toledo/registry/proposals/native_retained_sensitivity.json` before this cycle began
 (status `unverified`). This run does not re-register it; its `status` field is updated with the
 real empirical result after the run (see the handoff-file update and Toledo's own commit).
 

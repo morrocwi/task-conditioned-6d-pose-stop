@@ -4,7 +4,7 @@ Fifth real-data cycle. Founder authorization
 (`ops/HANDOFF_2026-09-09_external_dataset.md`, "Fifth cycle authorized, 2026-09-09: H3 (native
 retained-sensitivity model)"): "เราสร้างโมเดลมา แก้ปัญหาให้ certificate ทำงาน" -- build the model, solve
 the problem so the certificate works, using the native no-T* model per Toledo proposals
-PROP-NATIVE-01/02 (`~/ANSE.ASIA/toledo/registry/proposals/native_retained_sensitivity.json`).
+PROP-NATIVE-01/02 (`toledo/registry/proposals/native_retained_sensitivity.json`).
 
 ## What is genuinely different from runs 1-4
 
