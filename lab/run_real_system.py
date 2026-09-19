@@ -439,7 +439,7 @@ def run_decay_predictor(args):
             "feature_dim": d1,
             "inference": inference,
             "timing_mode": timing_mode,
-            "reference": "PROP-DECAY-01, ~/ANSE.ASIA/toledo/registry/proposals/spectral_decay_predictor.json",
+            "reference": "PROP-DECAY-01, toledo/registry/proposals/spectral_decay_predictor.json",
         },
         "evaluation": ev,
         "evidence_boundary": {
@@ -492,7 +492,7 @@ def run_bonferroni_multicheckpoint(args):
             "feature_dim": d1,
             "inference": inference,
             "timing_mode": timing_mode,
-            "reference": "PROP-CONF-03, ~/ANSE.ASIA/toledo/registry/proposals/conformal_stopping_family.json; union bound machine-checked in ~/ANSE.ASIA/toledo/coq/canonical/PROP_CONF_03_union_bound.v",
+            "reference": "PROP-CONF-03, toledo/registry/proposals/conformal_stopping_family.json; union bound machine-checked in toledo/coq/canonical/PROP_CONF_03_union_bound.v",
         },
         "evaluation": ev,
         "evidence_boundary": {

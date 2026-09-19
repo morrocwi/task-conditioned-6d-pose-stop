@@ -1,6 +1,6 @@
 """Condition-number-bounded geometric decay predictor (PROP-DECAY-01).
 
-Toledo proposal: ~/ANSE.ASIA/toledo/registry/proposals/spectral_decay_predictor.json.
+Toledo proposal: toledo/registry/proposals/spectral_decay_predictor.json.
 Fourth real-data cycle (see ops/HANDOFF_2026-09-09_external_dataset.md, "Fourth
 cycle authorized"). Replaces C6's fitted log-linear error-scale predictor
 (theory/FORMALIZATION_v1.md) with a closed-form decay law derived from the
@@ -49,7 +49,7 @@ SEPARATELY builds an actual n-node correspondence graph (a k-NN graph over
 the inlier corresponded scene points) purely to report its own n and D
 honestly, for comparison -- NOT because that graph's Laplacian has any
 established relationship to H_k's spectrum. Task A (the Coq proof attempt on
-q_formal/M.07 itself, ~/ANSE.ASIA/toledo) also did not close, independent of
+q_formal/M.07 itself, toledo) also did not close, independent of
 this structural finding; even had it closed, the floor it would bound is a
 different graph's Fiedler value, not lambda_min(H_k). Both an honest "not
 applicable" comparison and a numeric n/D report are given in RESULT.md.

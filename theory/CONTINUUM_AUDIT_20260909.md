@@ -7,7 +7,7 @@ our equations have no true continuum equation, only continuum-*appearing* phenom
 standing debt (workspace todolist "CONTINUUM-AUDIT"), not a one-off note.
 
 Method: every equation in `theory/FORMALIZATION_v1.md` (C1–C26) and the new native proposals
-(`~/ANSE.ASIA/toledo/registry/proposals/native_retained_sensitivity.json`, PROP-NATIVE-01/02)
+(`toledo/registry/proposals/native_retained_sensitivity.json`, PROP-NATIVE-01/02)
 checked against `information-discrete-math`'s contaminated-concept → discrete-replacement table.
 **This audit does not yet fix everything it finds** — it names each injection, its severity, and
 the discrete floor that should replace it, so the debt can be worked down item by item rather than

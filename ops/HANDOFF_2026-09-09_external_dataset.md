@@ -242,7 +242,7 @@ Test suite, leak-scan, and push status: see the commit(s) following this handoff
 
 Founder: "ใช้ glosa สร้างสมมติฐานและยกระดับงาน". Registered lightweight (P02 intake + P08
 diagnosis, full spine deliberately skipped, disclosed) at
-`~/ANSE.ASIA/glosa/projects/GLS-2026-005_pose-stop-conformal-diagnosis/` (registry entry
+`glosa/projects/GLS-2026-005_pose-stop-conformal-diagnosis/` (registry entry
 `GLS-2026-005`, Blackbox Log `BBL-2026-09-09-249`). Diagnosis: the calibrated conformal quantile
 `q~2.0008` (exp(q)~7.4x multiplicative inflation, rank 37/40) is the likely dominant driver of the
 too-wide envelope on both real-data runs, not task tolerances (run2 already ruled that out).
@@ -259,9 +259,9 @@ before-final-test discipline as run 2).
 Per Toledo-first discipline, the base split-conformal machinery (C7-C9, already in
 `cqts/safety.py`, retroactively) and the new Bonferroni-corrected multi-checkpoint fix designed
 today are registered as Toledo proposals
-(`~/ANSE.ASIA/toledo/registry/proposals/conformal_stopping_family.json`). The union-bound argument
+(`toledo/registry/proposals/conformal_stopping_family.json`). The union-bound argument
 behind the new fix is machine-checked, axiom-free
-(`~/ANSE.ASIA/toledo/coq/canonical/PROP_CONF_03_union_bound.v`). Merge into Toledo's live registry
+(`toledo/coq/canonical/PROP_CONF_03_union_bound.v`). Merge into Toledo's live registry
 is paused on a founder ruling (does split-conformal prediction become a new Toledo root, like CMC)
 -- this does not block implementing and testing the fix in THIS repo; cite the proposal ids
 (PROP-CONF-01/02/03) in any code/doc reference until real weld/M codes are assigned.
@@ -338,7 +338,7 @@ result commit `bb90b68`. Both findings are refutations:
    graph diameter D is undefined for it, confirmed numerically against a separately-built real
    correspondence k-NN graph (n=400, D=16, `4/(nD)=0.000625`, unrelated to that same stage's
    `H_k` `lambda_min=0.1235`). The paired Coq-proof attempt on `q_formal/M.07` itself
-   (`~/ANSE.ASIA/toledo`, separate task) also did not close in the time given — see that repo's
+   (`toledo`, separate task) also did not close in the time given — see that repo's
    own report for why (needs the full min-max/Courant-Fischer characterization of lambda_2, not
    available in this workspace's existing single-Rayleigh-pair spectral Coq idiom).
 2. **Empirical**: using the correct quantity for `H_k` instead (ordinary matrix condition number,
@@ -402,7 +402,7 @@ Implementation spec (from registry/proposals/native_retained_sensitivity.json, P
    different branch from C21-C26 -- place it correctly, cross-reference
    docs/L_R_SPECTRAL_CEILING_AND_FLOOR.md and docs/NAVIER_STOKES_THROUGH_OUR_LENS.md's kappa-scaling
    warning since this construction also uses H_k eigenvalues). Update
-   ~/ANSE.ASIA/glosa/projects/GLS-2026-005_pose-stop-conformal-diagnosis/DIAGNOSIS_HYPOTHESIS.md
+   glosa/projects/GLS-2026-005_pose-stop-conformal-diagnosis/DIAGNOSIS_HYPOTHESIS.md
    and the HYPOTHESIS_CANDIDATES_20260909.md file with the outcome against H3.
 10. Novelty/positioning guardrails unchanged (never "first," never "we solve pose estimation").
     Full test suite, leak scan, independent review before pushing to origin (mirror runs 2-4).
@@ -421,7 +421,7 @@ Diagnosed cause: the perturbation magnitude this construction produces is bounde
 real coarse-detector initial-pose error, so the invariance test answers whether a tiny wobble around
 the current estimate is tolerable, not whether the estimate itself is close to correct. Full detail:
 `lab/results/real-bop-lmo-2026-09-09-run5/RESULT.md`. `theory/FORMALIZATION_v1.md` (new C20b),
-`CLAIMS.md`, `README.md` updated. `~/ANSE.ASIA/glosa` (GLS-2026-005) and `~/ANSE.ASIA/toledo`
+`CLAIMS.md`, `README.md` updated. `glosa` (GLS-2026-005) and `toledo`
 (PROP-NATIVE-02 marked `refuted_unsafe`) updated in their own commits.
 
 Per this cycle's own elevated bar (an unsafe-ACT finding, not a routine refutation), an independent
@@ -440,7 +440,7 @@ coarse-detector initial-pose error, so the single-instant invariance check answe
 wobble tolerable" not "is this estimate correct."
 
 **Task now: implement and test `PROP-NATIVE-03`** (already registered in
-`~/ANSE.ASIA/toledo/registry/proposals/native_retained_sensitivity.json`, status `unverified`):
+`toledo/registry/proposals/native_retained_sensitivity.json`, status `unverified`):
 
 ```
 M_k := M_{k-1} + 1[task verdict invariant under every imagined perturbation at stage k],  M_0:=0
@@ -470,7 +470,7 @@ Standing discipline for this repo (unchanged from runs 1-5, do not relitigate):
 - Independent review before any push to `origin` (GitHub); push to `local` (Forgejo) freely.
   Given run 5 was unsafe, keep the SAME elevated review bar for run 6's result, whatever it is.
 - Update `theory/FORMALIZATION_v1.md` (new C-numbered clause), `CLAIMS.md`, `README.md` as needed.
-- Update glosa's `~/ANSE.ASIA/glosa/projects/GLS-2026-005_pose-stop-conformal-diagnosis/
+- Update glosa's `glosa/projects/GLS-2026-005_pose-stop-conformal-diagnosis/
   DIAGNOSIS_HYPOTHESIS.md` and `HYPOTHESIS_CANDIDATES_20260909.md`.
 - Update Toledo's `native_retained_sensitivity.json` PROP-NATIVE-03 status field with the real
   empirical result (verified/refuted/refuted_unsafe), same as PROP-NATIVE-02 was updated after run 5.
@@ -514,7 +514,7 @@ check never toggles on this data). Root cause for variant (b): the residual-scal
 reached ~1.15-1.8x (capped at 2x), roughly two orders of magnitude too small relative to the real
 coarse-detector initial-pose error (15mm translation sigma, 5-20deg rotation) to matter. Full
 detail: `lab/results/real-bop-lmo-2026-09-09-run6/RESULT.md`. `theory/FORMALIZATION_v1.md` (new
-C20c), `CLAIMS.md`, `README.md` updated. `~/ANSE.ASIA/glosa` (GLS-2026-005) and `~/ANSE.ASIA/toledo`
+C20c), `CLAIMS.md`, `README.md` updated. `glosa` (GLS-2026-005) and `toledo`
 (PROP-NATIVE-03 marked `refuted`, not `refuted_unsafe` — the mechanism did not make the unsafe
 outcome WORSE, it modestly improved it via extra iterations while still failing to establish
 safety) updated in their own commits.

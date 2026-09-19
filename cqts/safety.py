@@ -48,7 +48,7 @@ def bonferroni_feasible_max_checkpoints(n: int, alpha: float) -> int:
     for this n and alpha, which would only happen for very small n).
 
     This is PROP-CONF-03's feasibility constraint
-    (~/ANSE.ASIA/toledo/registry/proposals/conformal_stopping_family.json),
+    (toledo/registry/proposals/conformal_stopping_family.json),
     verified for n=40, alpha=0.1 to give exactly K'<=4 feasible, K'=5
     infeasible -- see GLS-2026-005's diagnosis revision in glosa.
     """
@@ -77,7 +77,7 @@ def bonferroni_checkpoint_alpha(alpha: float, num_checkpoints: int) -> float:
     `num_checkpoints` predeclared checkpoints so the union bound (Boole's
     inequality) keeps the combined miscoverage probability across all
     checkpoints <= alpha. Machine-checked, axiom-free:
-    ~/ANSE.ASIA/toledo/coq/canonical/PROP_CONF_03_union_bound.v
+    toledo/coq/canonical/PROP_CONF_03_union_bound.v
     (`finite_union_bound`, `bonferroni_checkpoints`).
     """
     if not (0.0 < float(alpha) < 1.0) or not math.isfinite(float(alpha)):
@@ -106,7 +106,7 @@ def safe_multi_checkpoint_quantiles(
     remain available so runs 1-2 stay reproducible.
 
     By the union bound (Boole's inequality; machine-checked axiom-free,
-    `~/ANSE.ASIA/toledo/coq/canonical/PROP_CONF_03_union_bound.v`, theorems
+    `toledo/coq/canonical/PROP_CONF_03_union_bound.v`, theorems
     `finite_union_bound` / `bonferroni_checkpoints`), the resulting per-
     checkpoint envelopes combine to an overall >= 1-alpha whole-trajectory
     coverage guarantee without the joint stage-aggregation of PROP-CONF-02.

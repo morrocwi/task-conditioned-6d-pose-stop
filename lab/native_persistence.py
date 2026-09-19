@@ -3,7 +3,7 @@ invariance check (PROP-NATIVE-03).
 
 Sixth real-data cycle (ops/HANDOFF_2026-09-09_external_dataset.md, "Run 6
 authorization"). Toledo proposal:
-~/ANSE.ASIA/toledo/registry/proposals/native_retained_sensitivity.json,
+toledo/registry/proposals/native_retained_sensitivity.json,
 PROP-NATIVE-03 (registered before this file was written -- Toledo-first).
 
 Registered rule

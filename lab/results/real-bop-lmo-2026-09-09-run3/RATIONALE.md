@@ -1,7 +1,7 @@
 # Predeclaration rationale — real-bop-lmo-2026-09-09-run3
 
 Third real-data cycle. Tests the PROP-CONF-03 Bonferroni-corrected multi-checkpoint conformal
-band, designed to address the cause diagnosed in `~/ANSE.ASIA/glosa/projects/GLS-2026-005_pose-stop-conformal-diagnosis/DIAGNOSIS_HYPOTHESIS.md`
+band, designed to address the cause diagnosed in `glosa/projects/GLS-2026-005_pose-stop-conformal-diagnosis/DIAGNOSIS_HYPOTHESIS.md`
 for runs 1-2's `certificate_rate = 0.0` on all three tasks. This file is committed together with
 `config.json`, `split_manifest.json` (copied unchanged from run2), and `backend_and_hardware.md`,
 in one commit, **before** `lab/run_real_system.py --mode bonferroni_multicheckpoint` is ever
@@ -21,7 +21,7 @@ invoked against `test.jsonl` for this run — following the F4 process fix alrea
   calibration/test statistic before this choice.
 - **Nonconformity score = coordinate-max only, per checkpoint, never a max over stages.** This is
   the literal PROP-CONF-03 construction (Toledo registry
-  `~/ANSE.ASIA/toledo/registry/proposals/conformal_stopping_family.json`), implemented in
+  `toledo/registry/proposals/conformal_stopping_family.json`), implemented in
   `lab/multicheckpoint.py::nonconformity_at_checkpoint`, calibrated via
   `cqts.safety.safe_multi_checkpoint_quantiles` which is a thin per-checkpoint dispatcher over the
   UNCHANGED `cqts.safety.safe_split_conformal_quantile` — the conformal quantile order-statistic

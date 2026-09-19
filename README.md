@@ -80,7 +80,7 @@ Adversarial regression tests retain the specific small-n, NaN, and n=1 inference
 7. **University lab harness** — backend-agnostic real-system interface (`lab/`).
 8. **Real-sensor ICP run (in-house, not independent)** — real BOP LM-O RGB-D data through a real numpy+scipy point-to-point ICP/Kabsch backend, via the `lab/` harness (`lab/results/real-bop-lmo-2026-09-09/`). This is a negative/falsifying result: see "Real-sensor evidence" below.
 9. **Second real-sensor ICP run, tolerance-rederivation cycle (in-house, not independent)** — same backend/dataset/split as run 8, task tolerances re-derived from TRAIN-split achievable accuracy instead of reused from the numerical fixture (`lab/results/real-bop-lmo-2026-09-09-run2/`). Same negative/falsifying result, and it rules out "the tolerances were just too tight" as the explanation: see "Real-sensor evidence" below.
-10. **Third real-sensor ICP run, Bonferroni-corrected multi-checkpoint certificate (in-house, not independent)** — same backend/dataset/split/tolerances as run 9, changes only the certificate-construction method: a NEW code path (`lab/multicheckpoint.py`, `cqts/safety.py`'s Bonferroni functions) restricted to K'=4 predeclared checkpoint stages, calibrated independently at `alpha/K'` (Toledo proposal PROP-CONF-03; union bound machine-checked in `~/ANSE.ASIA/toledo/coq/canonical/PROP_CONF_03_union_bound.v`), instead of the existing joint whole-trajectory construction (unchanged, still used by runs 8-9). Refutes the specific falsifiable prediction it was designed to test: per-checkpoint quantiles came out LARGER, not smaller, than the joint quantile, and the certificate rate stayed at 0%. See "Real-sensor evidence" below.
+10. **Third real-sensor ICP run, Bonferroni-corrected multi-checkpoint certificate (in-house, not independent)** — same backend/dataset/split/tolerances as run 9, changes only the certificate-construction method: a NEW code path (`lab/multicheckpoint.py`, `cqts/safety.py`'s Bonferroni functions) restricted to K'=4 predeclared checkpoint stages, calibrated independently at `alpha/K'` (Toledo proposal PROP-CONF-03; union bound machine-checked in `toledo/coq/canonical/PROP_CONF_03_union_bound.v`), instead of the existing joint whole-trajectory construction (unchanged, still used by runs 8-9). Refutes the specific falsifiable prediction it was designed to test: per-checkpoint quantiles came out LARGER, not smaller, than the joint quantile, and the certificate rate stayed at 0%. See "Real-sensor evidence" below.
 11. **Fourth real-sensor ICP run, closed-form condition-number decay predictor (in-house, not independent)** — same backend/dataset/split/tolerances as runs 9-10, changes only the error-scale predictor: replaces C6's fitted log-linear model with a closed-form decay law (`lab/decay_predictor.py`, Toledo proposal PROP-DECAY-01) derived from the ICP normal-equations Hessian H_k's own condition number, combined with the (unchanged) whole-trajectory calibration construction. Refutes both the proposed H_k~graph-Laplacian analogy (structurally, confirmed numerically) and the predicted calibration improvement (the new predictor's calibrated q is LARGER, not smaller, than either prior construction). See "Real-sensor evidence" below.
 12. **Fifth real-sensor cycle, native retained-sensitivity model, no ground truth anywhere online (in-house, not independent)** — a genuinely different decision mechanism (`lab/native_sensitivity.py`, Toledo proposals PROP-NATIVE-01/02): no fitted model, no calibrated completion set, no conformal quantile; ACT is licensed iff the task verdict is invariant under a bounded perturbation along H_k's own smallest eigenvalue direction. The first of five real-data cycles to license ACT at all — but ACT was WRONG (unsafe) on 92.5-100% of test episodes, always firing at the very first ICP stage. Reported as a serious safety finding, not a success. See "Real-sensor evidence" below.
 13. **Sixth real-sensor cycle, memory/persistence accumulator (in-house, not independent)** — `lab/native_persistence.py`, Toledo proposal PROP-NATIVE-03: gates run5's unmodified single-instant check behind a resetting streak `M_k>=theta` (`theta=4`), plus a disclosed residual-scaled-magnitude variant. Refuted: the underlying single-instant check is near-constant across stages on both TRAIN and TEST, so the streak degenerates into a fixed-delay knob (ACT deterministically at `k=3` on 100% of test episodes, unsafe on 80.0-87.5% of them) rather than a genuine noise filter; the residual-scaled variant produced byte-identical outcomes because its dynamic range is far too small to matter. See "Real-sensor evidence" below.
@@ -148,14 +148,14 @@ accounting in
 
 Run 2's own result pointed the diagnosis at the calibrated-envelope-CONSTRUCTION step rather than
 task tolerances. A diagnosis recorded in glosa
-(`~/ANSE.ASIA/glosa/projects/GLS-2026-005_pose-stop-conformal-diagnosis/DIAGNOSIS_HYPOTHESIS.md`)
+(`glosa/projects/GLS-2026-005_pose-stop-conformal-diagnosis/DIAGNOSIS_HYPOTHESIS.md`)
 identified the joint whole-trajectory max-over-15-stages nonconformity score (C7/PROP-CONF-02) as
 the likely dominant driver of the ~7.4x envelope inflation (`q≈2.0008`, rank 37/40), and proposed a
 Bonferroni-corrected fix: restrict the certificate to K'=4 predeclared checkpoint stages
 (`{4,8,12,15}`, the largest feasible value at n=40 calibration episodes and alpha=0.1), each
 calibrated independently at `alpha/K'=0.025` via the same `safe_split_conformal_quantile` used by
 the existing construction, combined by a machine-checked union bound (Toledo proposal
-PROP-CONF-03, `~/ANSE.ASIA/toledo/coq/canonical/PROP_CONF_03_union_bound.v`). This is a NEW code
+PROP-CONF-03, `toledo/coq/canonical/PROP_CONF_03_union_bound.v`). This is a NEW code
 path (`lab/multicheckpoint.py`; `lab/run_real_system.py --mode bonferroni_multicheckpoint`) — the
 existing joint whole-trajectory construction used by runs 1-2 is unchanged and unaffected.
 
@@ -182,7 +182,7 @@ the Mohar/Fiedler diameter floor `q_formal/M.07` (a bare citation, not Coq-prove
 fitted log-linear predictor with a decay law derived from the ICP normal-equations Hessian `H_k`'s
 own condition number: `kappa_k=lambda_max(H_k)/lambda_2(H_k)`, `rho_k<=(kappa_k-1)/(kappa_k+1)`,
 `s_k,i=rho_k^(K-k)*|residual_i|`. Toledo proposal `PROP-DECAY-01`
-(`~/ANSE.ASIA/toledo/registry/proposals/spectral_decay_predictor.json`) disclosed up front that the
+(`toledo/registry/proposals/spectral_decay_predictor.json`) disclosed up front that the
 `H_k ~ L_R` identification is an ANALOGY, not a proven fact.
 
 A companion attempt (in the Toledo repo, not this one) to Coq-prove `q_formal/M.07`'s diameter
@@ -219,7 +219,7 @@ cycle in a row to find this; held-out coverage is 95.0% (Wilson 83.5-98.6%). Ful
 Founder authorization: after four calibration-side falsifications (runs 1-4, all `certificate_rate
 = 0.0`), question the underlying error definition itself instead of the calibration construction.
 Toledo proposals `PROP-NATIVE-01`/`PROP-NATIVE-02`
-(`~/ANSE.ASIA/toledo/registry/proposals/native_retained_sensitivity.json`) replace the classical
+(`toledo/registry/proposals/native_retained_sensitivity.json`) replace the classical
 pose-error definition `e_k := Log(That_k^-1 T*)` (a distance to an unobserved `T*`, a non-readout
 under this workspace's own information-discrete-math discipline) with a retained-sensitivity ACT
 rule that uses no ground truth anywhere online: perturb the current pose estimate `T_hat_k` along
@@ -247,7 +247,7 @@ fail UNSAFE. Full accounting in
 
 Founder authorization: run5's unsafe-ACT finding (PROP-NATIVE-02) motivated testing whether a
 memory/persistence requirement recovers safety. Toledo proposal `PROP-NATIVE-03`
-(`~/ANSE.ASIA/toledo/registry/proposals/native_retained_sensitivity.json`) wraps run5's unmodified
+(`toledo/registry/proposals/native_retained_sensitivity.json`) wraps run5's unmodified
 single-instant invariance check in a resetting streak accumulator `M_k` (`M_k=M_{k-1}+1` when the
 check passes, `0` otherwise), gating `ACT <=> M_k >= theta` (`theta=4`, predeclared, reused from
 run3's own frozen Bonferroni checkpoint set). Two variants were run: (a) theta-gate only; (b) also

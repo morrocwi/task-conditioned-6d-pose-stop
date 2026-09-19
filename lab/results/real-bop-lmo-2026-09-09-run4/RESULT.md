@@ -1,6 +1,6 @@
 # External Lab Result Report — real-bop-lmo-2026-09-09-run4
 
-Fourth real-data cycle. Tests PROP-DECAY-01 (`~/ANSE.ASIA/toledo/registry/proposals/spectral_decay_predictor.json`):
+Fourth real-data cycle. Tests PROP-DECAY-01 (`toledo/registry/proposals/spectral_decay_predictor.json`):
 replace C6's fitted log-linear error-scale predictor with a closed-form decay predictor derived
 from the ICP normal-equations Hessian `H_k = J^T J`'s own conditioning. Predeclaration commit
 `724c47a` (before `test.jsonl` was evaluated for this run — see `RATIONALE.md`).

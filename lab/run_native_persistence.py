@@ -192,7 +192,7 @@ def main():
             "calibration_episodes": len(cal),
             "test_episodes": len(test),
             "inference": inference,
-            "reference": "PROP-NATIVE-03, ~/ANSE.ASIA/toledo/registry/proposals/native_retained_sensitivity.json",
+            "reference": "PROP-NATIVE-03, toledo/registry/proposals/native_retained_sensitivity.json",
         },
         "evaluation": ev,
         "evidence_boundary": {

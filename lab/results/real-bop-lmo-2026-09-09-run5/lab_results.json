@@ -20,7 +20,7 @@
       "confidence_level": 0.95,
       "minimum_test_episodes": 30
     },
-    "reference": "PROP-NATIVE-01/02, ~/ANSE.ASIA/toledo/registry/proposals/native_retained_sensitivity.json"
+    "reference": "PROP-NATIVE-01/02, toledo/registry/proposals/native_retained_sensitivity.json"
   },
   "evaluation": {
     "episodes": 40,

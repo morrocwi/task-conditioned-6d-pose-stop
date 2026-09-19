@@ -1,7 +1,7 @@
 # External Lab Result Report — real-bop-lmo-2026-09-09-run3
 
 Third real-data cycle. Tests the PROP-CONF-03 Bonferroni-corrected multi-checkpoint conformal
-band against the diagnosis in `~/ANSE.ASIA/glosa/projects/GLS-2026-005_pose-stop-conformal-diagnosis/DIAGNOSIS_HYPOTHESIS.md`.
+band against the diagnosis in `glosa/projects/GLS-2026-005_pose-stop-conformal-diagnosis/DIAGNOSIS_HYPOTHESIS.md`.
 Predeclaration commit `681c710` (2026-09-09T14:32:42+07:00, before test.jsonl was evaluated for
 this run's frozen config — see `RATIONALE.md` for the exact predeclaration and its disclosed
 process note). Evaluator invoked 2026-09-09T14:32:49+07:00.
